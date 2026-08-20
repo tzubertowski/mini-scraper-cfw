@@ -4,13 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { join, dirname, basename } from 'node:path';
 import { Command } from 'commander';
 import debug from 'debug';
-import glob from 'fast-glob';
 import updateNotifier from 'update-notifier';
-import { isRomFolder, scrapeFolder } from './libretro.js';
 import { type Options } from './options.js';
 import { checkAi, DEFAULT_AI_URL, DEFAULT_AI_KEY } from './ai.js';
-import { resetStats, stats } from './stats.js';
+import { resetStats } from './stats.js';
 import { getOutputFormat, supportedFormats } from './format/format.js';
+import { scanLibrary, scrapeLibrary } from './core/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -48,32 +47,25 @@ export async function run(args: string[] = process.argv) {
     .helpCommand(false)
     .allowExcessArguments(false)
     .action(async (targetPath: string, options: Options) => {
-      stats.startTime = Date.now();
-      process.chdir(targetPath);
-
-      let romFolders: string[] = [];
-      const targetFolder = basename(targetPath);
-      if (isRomFolder(targetFolder)) {
-        debug(`Target folder "${targetFolder}" is a ROM folder`);
-        romFolders.push(targetFolder);
-        process.chdir('..');
-      } else {
-        const allFolders = await glob(['*'], { onlyDirectories: true });
-        romFolders = allFolders.filter(isRomFolder);
-        debug(`Found ${romFolders.length} ROM folders`);
-      }
-
-      if (romFolders.length === 0) {
+      const library = await scanLibrary(targetPath);
+      if (library.systems.length === 0) {
         console.info('No ROM folders found');
         return;
       }
 
       const log = debug('cli');
-      log('Found ROM folders:', romFolders);
+      log(
+        'Found ROM folders:',
+        library.systems.map((system) => system.name)
+      );
 
       if (options.cleanup) {
         const format = await getOutputFormat(options);
-        await format.cleanupArtwork('.', romFolders, options);
+        await format.cleanupArtwork(
+          library.romRootPath,
+          library.systems.map((system) => system.name),
+          options
+        );
         return;
       }
 
@@ -91,21 +83,17 @@ export async function run(args: string[] = process.argv) {
         options.aiClient = client;
       }
 
-      for (const folder of romFolders) {
-        await scrapeFolder(folder, options);
-        console.info('--------------------------------');
-      }
-
-      const elapsed = Date.now() - stats.startTime;
+      const result = await scrapeLibrary(library, options);
+      const elapsed = result.elapsedMs;
       const seconds = Math.floor((elapsed % (1000 * 60)) / 1000);
       const minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
 
-      console.info(`Scraped ${romFolders.length} folders (in ${minutes}m ${seconds}s)`);
-      console.info(`- ${stats.matches.perfect} perfect matches`);
-      console.info(`- ${stats.matches.partial} partial matches`);
-      if (options.ai) console.info(`- ${stats.matches.ai} AI matches`);
-      console.info(`- ${stats.matches.none} not found`);
-      if (stats.skipped) console.info(`- ${stats.skipped} existing`);
+      console.info(`Scraped ${result.systems} folders (in ${minutes}m ${seconds}s)`);
+      console.info(`- ${result.matches.perfect} perfect matches`);
+      console.info(`- ${result.matches.partial} partial matches`);
+      if (options.ai) console.info(`- ${result.matches.ai} AI matches`);
+      console.info(`- ${result.matches.none} not found`);
+      if (result.skipped) console.info(`- ${result.skipped} existing`);
     });
 
   await command.parseAsync(args);

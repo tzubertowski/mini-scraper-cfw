@@ -13,16 +13,38 @@ import { pathExists, sanitizeName, stripMetadata } from './file.js';
 const debug = createDebug('libretro');
 
 export type MachineCache = Record<string, Partial<Record<ArtType, string[]>>>;
+export type ScrapeFolderRuntime = {
+  signal?: AbortSignal;
+  onFileComplete?: (file: string) => void;
+};
 
 const defaultBaseUrl = 'https://thumbnails.libretro.com/';
 const machineCache: MachineCache = {};
 
+function normalizeFolderName(value: string) {
+  return value
+    .toLowerCase()
+    .replaceAll(/[^0-9a-z]+/gv, ' ')
+    .trim();
+}
+
+function matchesFolderAlias(folderName: string, alias: string) {
+  const normalizedFolder = normalizeFolderName(folderName);
+  const normalizedAlias = normalizeFolderName(alias);
+  if (!normalizedAlias) return false;
+
+  const compactFolder = normalizedFolder.replaceAll(' ', '');
+  const compactAlias = normalizedAlias.replaceAll(' ', '');
+  return compactFolder === compactAlias || ` ${normalizedFolder} `.includes(` ${normalizedAlias} `);
+}
+
 export function getMachine(file: string, isFolder = false) {
   const extension = file.split('.').pop() ?? '';
-  const firstComponent = file.split(/\\|\//v, 1)[0];
+  const firstComponent = isFolder ? path.basename(file) : file.split(/\\|\//v, 1)[0];
   const machine = Object.entries(machines).find(
     ([_, { extensions, alias }]) =>
-      (isFolder || extensions.includes(extension)) && alias.some((a) => firstComponent.includes(a))
+      (isFolder || extensions.includes(extension)) &&
+      alias.some((a) => (isFolder ? matchesFolderAlias(firstComponent, a) : firstComponent.includes(a)))
   );
   return machine ? machine[0] : undefined;
 }
@@ -31,24 +53,48 @@ export function isRomFolder(folderName: string) {
   return getMachine(folderName, true) !== undefined;
 }
 
-export async function scrapeFolder(folderPath: string, options: Options) {
+export async function listScrapeFiles(folderPath: string, machine: string) {
+  const extensions = machines[machine]?.extensions ?? [];
+  const files = await glob(
+    extensions.map((extension) => `**/*.${extension}`),
+    {
+      onlyFiles: true,
+      cwd: folderPath,
+      caseSensitiveMatch: false
+    }
+  );
+  const result: string[] = [];
+  for (const file of files) {
+    const absolutePath = path.join(folderPath, file);
+    const m3uPath = absolutePath.replace(/ \(Disc \d+\).+$/v, '') + '.m3u';
+    if (!absolutePath.endsWith('.m3u') && (await pathExists(m3uPath))) continue;
+    result.push(file);
+  }
+
+  return result;
+}
+
+export async function scrapeFolder(folderPath: string, options: Options, runtime: ScrapeFolderRuntime = {}) {
   debug('Options:', options);
-  const folderMachine = getMachine(folderPath, true);
+  const folderMachine = getMachine(path.basename(folderPath), true);
   console.info(`Scraping folder: ${folderPath} [Detected: ${folderMachine}]`);
   if (!folderMachine) return;
 
-  const files = await glob(['**/*'], { onlyFiles: true, cwd: folderPath });
+  const files = await listScrapeFiles(folderPath, folderMachine);
   const format = await getOutputFormat(options);
   if (format.prepareMachine) await format.prepareMachine(folderPath, folderMachine, options);
 
   try {
     for (const file of files) {
+      runtime.signal?.throwIfAborted();
       try {
-        await scrapeFile(folderPath, file, format, options);
+        await scrapeFile(folderPath, file, folderMachine, format, options);
       } catch (_error: unknown) {
         const error = _error as Error;
         console.error(`Error while scraping artwork for file "${file}": ${error.message}`);
       }
+
+      runtime.onFileComplete?.(file);
     }
   } finally {
     await format.finalizeMachine?.(folderPath, folderMachine, options);
@@ -79,13 +125,10 @@ async function resolveScrapePath(originalFilePath: string, folderPath: string) {
   return originalFilePath;
 }
 
-async function scrapeFile(folderPath: string, file: string, format: OutputFormat, options: Options) {
+async function scrapeFile(folderPath: string, file: string, machine: string, format: OutputFormat, options: Options) {
   const originalFilePath = path.join(folderPath, file);
   const filePath = await resolveScrapePath(originalFilePath, folderPath);
   if (!filePath) return;
-
-  const machine = getMachine(originalFilePath);
-  if (!machine) return;
 
   const artTypes = getArtTypes(options);
   if (await format.useSeparateArtworks(options)) {

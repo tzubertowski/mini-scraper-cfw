@@ -15,6 +15,7 @@ Artwork scraper for MinUI, NextUI, muOS, Knulli, TreeFrogUI, OnionOS, GarlicOS, 
 
 **Features:**
 - Scrapes boxart for your ROMs, in a compatible format with multiple frontends/OSes
+- Includes a desktop app with folder selection, automatic frontend detection, progress, and cancellation
 - No account needed, uses [libretro thumbnails](https://github.com/libretro-thumbnails/libretro-thumbnails)
 - Optionally uses local AI (via [Ollama](https://ollama.com/) or any OpenAI-compatible API) for better boxart matching
 - No configuration needed
@@ -26,6 +27,34 @@ Requires [Node.js >22.14](https://nodejs.org/), and optionally [Ollama](https://
 
 
 This tool uses a Command Line Interface (CLI) and must be installed and run from a terminal.
+
+### Desktop app
+
+The desktop app is the easiest way to use Mini Scraper:
+
+1. Open Mini Scraper and choose the SD card or ROM folder.
+2. Confirm the detected frontend and artwork style.
+3. Select **Add artwork**.
+
+The detector uses scored filesystem evidence and asks for manual confirmation when it cannot distinguish similar layouts. All filesystem and network work stays in the Electron main process; the local web interface receives only folder-selection, scrape, cancel, and progress operations through an isolated bridge.
+
+For development:
+
+```bash
+npm install
+npm run desktop
+```
+
+Create an unpacked application or distributable archive with:
+
+```bash
+npm run desktop:package
+npm run desktop:make
+```
+
+Electron Forge writes packaged output to `out/`. Use Node.js 22 or 24 LTS for packaging; the currently pinned Forge toolchain does not complete archive extraction under Node.js 26.
+
+### Command-line app
 
 Install the CLI globally by opening a terminal and running the following command:
 

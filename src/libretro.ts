@@ -6,7 +6,7 @@ import { ArtTypeOption, type Options } from './options.js';
 import { findBestMatch, findFuzzyMatches } from './matcher.js';
 import { stats } from './stats.js';
 import { machines } from './machines.js';
-import { getOutputFormat } from './format/format.js';
+import { getOutputFormat, type OutputFormat } from './format/format.js';
 import { ArtType } from './art.js';
 import { pathExists, sanitizeName, stripMetadata } from './file.js';
 
@@ -33,93 +33,110 @@ export function isRomFolder(folderName: string) {
 
 export async function scrapeFolder(folderPath: string, options: Options) {
   debug('Options:', options);
-  console.info(`Scraping folder: ${folderPath} [Detected: ${getMachine(folderPath, true)}]`);
+  const folderMachine = getMachine(folderPath, true);
+  console.info(`Scraping folder: ${folderPath} [Detected: ${folderMachine}]`);
+  if (!folderMachine) return;
+
   const files = await glob(['**/*'], { onlyFiles: true, cwd: folderPath });
-  let prepared = false;
+  const format = await getOutputFormat(options);
+  if (format.prepareMachine) await format.prepareMachine(folderPath, folderMachine, options);
 
-  for (const file of files) {
-    try {
-      const originalFilePath = path.join(folderPath, file);
-      let filePath = originalFilePath;
-      if (filePath.endsWith('.m3u')) {
-        const parentFolder = path.dirname(filePath);
-        if (parentFolder === folderPath) {
-          debug(`File is m3u, parent folder is machine folder, continuing anyway: ${filePath}`);
-        } else {
-          filePath = parentFolder;
-          debug(`File is m3u, using parent folder for scraping: ${filePath}`);
-        }
-      } else {
-        // Check if it's a multi-disc, with "Rom Name (Disc 1).any" format,
-        // with a "Rom Name.m3u" in the same folder
-        const m3uPath = filePath.replace(/ \(Disc \d+\).+$/v, '') + '.m3u';
-        if (await pathExists(m3uPath)) {
-          debug(`File is a multi-disc part, skipping: ${filePath}`);
-          continue;
-        }
+  try {
+    for (const file of files) {
+      try {
+        await scrapeFile(folderPath, file, format, options);
+      } catch (_error: unknown) {
+        const error = _error as Error;
+        console.error(`Error while scraping artwork for file "${file}": ${error.message}`);
       }
-
-      const machine = getMachine(originalFilePath);
-      if (!machine) continue;
-
-      const format = await getOutputFormat(options);
-      if (format.prepareMachine && !prepared) {
-        await format.prepareMachine(folderPath, machine, options);
-        prepared = true;
-      }
-
-      if (await format.useSeparateArtworks(options)) {
-        const artTypes = getArtTypes(options);
-        const art1Path = await format.getArtPath(originalFilePath, machine, artTypes.art1);
-        if ((await pathExists(art1Path)) && !options.force) {
-          debug(`Art file already exists, skipping "${art1Path}"`);
-          stats.skipped++;
-        } else {
-          debug(`Machine: ${machine} (file: ${filePath})`);
-          const art1Url = await findArtUrl(filePath, machine, options, artTypes.art1);
-          const result = await format.exportArtwork(art1Url, undefined, art1Path, options);
-          if (!result) {
-            console.info(`No art found for "${filePath}"`);
-          }
-        }
-
-        const art2Path = artTypes.art2 ? await format.getArtPath(originalFilePath, machine, artTypes.art2) : undefined;
-        if (!art2Path) continue;
-        if ((await pathExists(art2Path)) && !options.force) {
-          debug(`Art file already exists, skipping "${art2Path}"`);
-          stats.skipped++;
-        } else {
-          debug(`Machine: ${machine} (file: ${filePath})`);
-          const art2Url = await findArtUrl(filePath, machine, options, artTypes.art2);
-          const result = await format.exportArtwork(art2Url, undefined, art2Path, options);
-          if (!result) {
-            console.info(`No art found for "${filePath}"`);
-          }
-        }
-      } else {
-        const artPath = await format.getArtPath(originalFilePath, machine);
-        if ((await pathExists(artPath)) && !options.force) {
-          debug(`Art file already exists, skipping "${artPath}"`);
-          stats.skipped++;
-          continue;
-        }
-
-        debug(`Machine: ${machine} (file: ${filePath})`);
-        const artTypes = getArtTypes(options);
-        const art1Url = await findArtUrl(filePath, machine, options, artTypes.art1);
-        const art2Url = artTypes.art2 ? await findArtUrl(filePath, machine, options, artTypes.art2) : undefined;
-        const result = await format.exportArtwork(art1Url, art2Url, artPath, options);
-        if (!result) {
-          console.info(`No art found for "${filePath}"`);
-        }
-      }
-    } catch (_error: unknown) {
-      const error = _error as Error;
-      console.error(`Error while scraping artwork for file "${file}": ${error.message}`);
     }
+  } finally {
+    await format.finalizeMachine?.(folderPath, folderMachine, options);
   }
 
   debug('--------------------------------');
+}
+
+async function resolveScrapePath(originalFilePath: string, folderPath: string) {
+  if (originalFilePath.endsWith('.m3u')) {
+    const parentFolder = path.dirname(originalFilePath);
+    if (parentFolder === folderPath) {
+      debug(`File is m3u, parent folder is machine folder, continuing anyway: ${originalFilePath}`);
+      return originalFilePath;
+    }
+
+    debug(`File is m3u, using parent folder for scraping: ${parentFolder}`);
+    return parentFolder;
+  }
+
+  // Skip a multi-disc part when a matching "Rom Name.m3u" exists.
+  const m3uPath = originalFilePath.replace(/ \(Disc \d+\).+$/v, '') + '.m3u';
+  if (await pathExists(m3uPath)) {
+    debug(`File is a multi-disc part, skipping: ${originalFilePath}`);
+    return undefined;
+  }
+
+  return originalFilePath;
+}
+
+async function scrapeFile(folderPath: string, file: string, format: OutputFormat, options: Options) {
+  const originalFilePath = path.join(folderPath, file);
+  const filePath = await resolveScrapePath(originalFilePath, folderPath);
+  if (!filePath) return;
+
+  const machine = getMachine(originalFilePath);
+  if (!machine) return;
+
+  const artTypes = getArtTypes(options);
+  if (await format.useSeparateArtworks(options)) {
+    const context = { folderPath, romPath: originalFilePath, searchPath: filePath, machine, format, options };
+    await scrapeSeparateArtwork({ ...context, type: artTypes.art1 });
+    if (artTypes.art2) {
+      await scrapeSeparateArtwork({ ...context, type: artTypes.art2 });
+    }
+
+    return;
+  }
+
+  const artPath = await format.getArtPath(originalFilePath, machine, undefined, folderPath);
+  if ((await pathExists(artPath)) && !options.force) {
+    debug(`Art file already exists, skipping "${artPath}"`);
+    stats.skipped++;
+    return;
+  }
+
+  debug(`Machine: ${machine} (file: ${filePath})`);
+  const art1Url = await findArtUrl(filePath, machine, options, artTypes.art1);
+  const art2Url = artTypes.art2 ? await findArtUrl(filePath, machine, options, artTypes.art2) : undefined;
+  const result = await format.exportArtwork(art1Url, art2Url, artPath, options);
+  if (!result) console.info(`No art found for "${filePath}"`);
+}
+
+async function scrapeSeparateArtwork(context: {
+  folderPath: string;
+  romPath: string;
+  searchPath: string;
+  machine: string;
+  type: ArtType;
+  format: OutputFormat;
+  options: Options;
+}) {
+  const { folderPath, romPath, searchPath, machine, type, format, options } = context;
+  const artworkPath = await format.getArtPath(romPath, machine, type, folderPath);
+  if ((await pathExists(artworkPath)) && !options.force) {
+    debug(`Art file already exists, skipping "${artworkPath}"`);
+    stats.skipped++;
+  } else {
+    debug(`Machine: ${machine} (file: ${searchPath})`);
+    const artUrl = await findArtUrl(searchPath, machine, options, type);
+    const result = await format.exportArtwork(artUrl, undefined, artworkPath, options);
+    if (!result) {
+      console.info(`No art found for "${searchPath}"`);
+      return;
+    }
+  }
+
+  await format.registerArtwork?.({ folderPath, romPath, artworkPath, machine, type, options });
 }
 
 export async function findArtUrl(

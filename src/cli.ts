@@ -10,7 +10,7 @@ import { isRomFolder, scrapeFolder } from './libretro.js';
 import { type Options } from './options.js';
 import { checkAi, DEFAULT_AI_URL, DEFAULT_AI_KEY } from './ai.js';
 import { resetStats, stats } from './stats.js';
-import { getOutputFormat } from './format/format.js';
+import { getOutputFormat, supportedFormats } from './format/format.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -35,7 +35,7 @@ export async function run(args: string[] = process.argv) {
     .option('-w, --width <size>', 'Max width of the image', Number.parseFloat, 300)
     .option('-h, --height <size>', 'Max height of the image', Number.parseFloat)
     .option('-t, --type <type>', 'Art type (boxart, snap, title, box+snap, box+title)', 'boxart')
-    .option('-o, --output <format>', 'Artwork format (minui, nextui, muos, anbernic, funkey, onion)', 'minui')
+    .option('-o, --output <format>', `Artwork format (${supportedFormats.join(', ')})`, 'minui')
     .option('-a, --ai', 'Use AI for advanced matching', false)
     .option('-m, --ai-model <name>', 'AI model to use for matching', 'gemma2:2b')
     .option('--ai-url <url>', 'Base URL of the OpenAI-compatible AI provider', DEFAULT_AI_URL)

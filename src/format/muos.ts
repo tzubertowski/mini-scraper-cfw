@@ -112,22 +112,21 @@ export async function exportArtwork(
     if (!art1Url) return false;
 
     debug(`Found art URL: "${art1Url}"`);
-    await resizeImageTo(art1Url, artPath, { width: options.width, height: options.height });
-    return true;
+    return resizeImageTo(art1Url, artPath, { width: options.width, height: options.height });
   }
 
   const artTypes = getArtTypes(options);
   if (artTypes.art2 && (art1Url ?? art2Url)) {
     debug(`Found art URL(s): "${art1Url}" / "${art2Url}"`);
-    await composeImageTo(art1Url, art2Url, artPath, { width: options.width, height: options.height });
-  } else if (art1Url) {
-    debug(`Found art URL: "${art1Url}"`);
-    await resizeImageTo(art1Url, artPath, { width: options.width, height: options.height });
-  } else {
-    return false;
+    return composeImageTo(art1Url, art2Url, artPath, { width: options.width, height: options.height });
   }
 
-  return true;
+  if (art1Url) {
+    debug(`Found art URL: "${art1Url}"`);
+    return resizeImageTo(art1Url, artPath, { width: options.width, height: options.height });
+  }
+
+  return false;
 }
 
 export async function cleanupArtwork(targetPath: string, romFolders: string[], _options: Options) {

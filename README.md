@@ -8,7 +8,7 @@
 
 <img src="https://raw.githubusercontent.com/sinedied/mini-scraper/refs/heads/main/pic.jpg" alt="picture of a scraped boxart" width="180" align="right">
 
-Artwork scraper for [MinUI](https://github.com/shauninman/MinUI), [NextUI](https://github.com/LoveRetro/NextUI), [muOS](https://muos.dev/), and others.
+Artwork scraper for MinUI, NextUI, muOS, Knulli, TreeFrogUI, OnionOS, GarlicOS, SpruceOS, AlliumOS, and other handheld frontends.
 
 > [!NOTE]
 > MinUI does't officially support boxarts, but still has [some support for it as stated by its author](https://www.reddit.com/r/SBCGaming/comments/1hycyqx/minui_box_art/).
@@ -50,7 +50,7 @@ When running the scraper, you can pass the following options:
 - `-w, --width <size>`: Max width of the image (default: 300)
 - `-h, --height <size>`: Max height of the image
 - `-t, --type <type>`: Type of image to scrape (can be `boxart`, `snap`, `title`, `box+snap`, `box+title`) (default: `boxart`)
-- `-o, --output <format>`: Artwork format (can be `minui`, `nextui`, `muos`, `anbernic`, `funkey`, `onion`) (default: `minui`)
+- `-o, --output <format>`: Artwork format (default: `minui`; see the table below)
 - `-a, --ai`: Use AI for advanced matching (default: false)
 - `-m, --ai-model <name>`: AI model to use for matching (default: `gemma2:2b`)
 - `--ai-url <url>`: Base URL of the OpenAI-compatible AI provider (default: `http://localhost:11434/v1`)
@@ -63,6 +63,22 @@ When running the scraper, you can pass the following options:
 
 > [!TIP]
 > Max width must be adjusted depending of the device and output format, the default works well for Trimui Brick. For 640x480 devices, try with `--width 200`.
+
+## Output formats
+
+| Value | Artwork layout | Notes |
+| --- | --- | --- |
+| `minui` | `.res/<ROM filename>.png` | Retains the ROM extension |
+| `nextui` | `.media/<ROM stem>.png` | NextUI layout |
+| `muos` | `/MUOS/info/catalogue/<system>/...` | Also prepares theme width overrides |
+| `knulli` | `images/<ROM stem>-<media>.png` | Preserves and updates EmulationStation `gamelist.xml` metadata |
+| `treefrogui` | `.res/<ROM stem>.png` | TreeFrogUI layout; `treefrog` is an alias |
+| `onionos` | `Imgs/<ROM stem>.png` | `onion` is a backwards-compatible alias |
+| `garlicos` | `Imgs/<ROM stem>.png` | `garlic` is an alias |
+| `spruceos` | `Imgs/<ROM stem>.png` | `spruce` is an alias |
+| `alliumos` | `Imgs/<ROM stem>.png` | `allium` is an alias |
+| `anbernic` | `Imgs/<ROM stem>.png` | Existing stock-style layout |
+| `funkey` | `<ROM stem>.png` | Artwork beside the ROM |
 
 ## AI matching
 

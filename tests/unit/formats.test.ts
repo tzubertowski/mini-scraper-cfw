@@ -5,10 +5,12 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { ArtType } from '../../src/art.js';
 import anbernic from '../../src/format/anbernic.js';
 import funkey from '../../src/format/funkey.js';
-import { getOutputFormat } from '../../src/format/format.js';
+import { getOutputFormat, supportedFormats } from '../../src/format/format.js';
+import knulli from '../../src/format/knulli.js';
 import minui from '../../src/format/minui.js';
 import muos from '../../src/format/muos.js';
 import nextui from '../../src/format/nextui.js';
+import treefrogui from '../../src/format/treefrogui.js';
 import { createOptions } from '../helpers/options.js';
 
 const temporaryPaths: string[] = [];
@@ -30,6 +32,9 @@ describe('output formats', () => {
     await expect(nextui.getArtPath(filePath, 'Nintendo - Game Boy Color')).resolves.toBe(
       path.join('GBC', '.media', 'Wario Land 3.png')
     );
+    await expect(treefrogui.getArtPath(filePath, 'Nintendo - Game Boy Color')).resolves.toBe(
+      path.join('GBC', '.res', 'Wario Land 3.png')
+    );
     await expect(anbernic.getArtPath(filePath, 'Nintendo - Game Boy Color')).resolves.toBe(
       path.join('GBC', 'Imgs', 'Wario Land 3.png')
     );
@@ -40,7 +45,60 @@ describe('output formats', () => {
 
   test('maps Onion to the Anbernic implementation', async () => {
     const onion = await getOutputFormat(createOptions({ output: 'onion' }));
+    const onionOs = await getOutputFormat(createOptions({ output: 'OnionOS' }));
+    const garlicOs = await getOutputFormat(createOptions({ output: 'garlicos' }));
+    const spruceOs = await getOutputFormat(createOptions({ output: 'spruceos' }));
+    const alliumOs = await getOutputFormat(createOptions({ output: 'allium' }));
     expect(onion).toBe(anbernic);
+    expect(onionOs).toBe(anbernic);
+    expect(garlicOs).toBe(anbernic);
+    expect(spruceOs).toBe(anbernic);
+    expect(alliumOs).toBe(anbernic);
+    expect(supportedFormats).toEqual(
+      expect.arrayContaining([
+        'minui',
+        'nextui',
+        'muos',
+        'knulli',
+        'treefrogui',
+        'onionos',
+        'garlicos',
+        'spruceos',
+        'alliumos'
+      ])
+    );
+  });
+
+  test('writes Knulli media paths and preserves existing gamelist metadata', async () => {
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mini-scraper-knulli-'));
+    temporaryPaths.push(root);
+    const folderPath = path.join(root, 'GBC');
+    const romPath = path.join(folderPath, 'Hacks', 'Wario Land 3.zip');
+    await fs.mkdir(path.dirname(romPath), { recursive: true });
+    await fs.writeFile(romPath, 'rom');
+    await fs.writeFile(
+      path.join(folderPath, 'gamelist.xml'),
+      '<?xml version="1.0"?><gameList><game><path>./Hacks/Wario Land 3.zip</path><name>Custom name</name><desc>Keep me</desc></game><game><path>./Other.zip</path><favorite>true</favorite></game></gameList>'
+    );
+
+    const artworkPath = await knulli.getArtPath(romPath, 'Nintendo - Game Boy Color', ArtType.Boxart, folderPath);
+    expect(artworkPath).toBe(path.join(folderPath, 'images', 'Wario Land 3-box.png'));
+    await knulli.registerArtwork?.({
+      folderPath,
+      romPath,
+      artworkPath,
+      machine: 'Nintendo - Game Boy Color',
+      type: ArtType.Boxart,
+      options: createOptions({ output: 'knulli' })
+    });
+    await knulli.finalizeMachine?.(folderPath, 'Nintendo - Game Boy Color', createOptions({ output: 'knulli' }));
+
+    const gameList = await fs.readFile(path.join(folderPath, 'gamelist.xml'), 'utf8');
+    expect(gameList).toContain('<name>Custom name</name>');
+    expect(gameList).toContain('<desc>Keep me</desc>');
+    expect(gameList).toContain('<boxart>./images/Wario Land 3-box.png</boxart>');
+    expect(gameList).toContain('<favorite>true</favorite>');
   });
 
   test('scopes cleanup to selected ROM folders with glob characters', async () => {

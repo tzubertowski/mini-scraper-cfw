@@ -41,8 +41,10 @@ export async function resizeImageTo(url: string, destination: string, size?: Siz
     const imgHeight = isLargerThanTaller ? undefined : height;
     await mkdir(path.dirname(destination), { recursive: true });
     await image.resize({ w: imgWidth!, h: imgHeight }).write(destination as `${string}.${string}`);
+    return true;
   } catch (error: unknown) {
     console.error(`Failed to download art from "${url}": ${error instanceof Error ? error.message : String(error)}`);
+    return false;
   }
 }
 
@@ -79,9 +81,11 @@ export async function composeImageTo(
     }
 
     await image.write(destination as `${string}.${string}`);
+    return true;
   } catch (error: unknown) {
     console.error(
       `Failed to download art from "${url1}" or "${url2}": ${error instanceof Error ? error.message : String(error)}`
     );
+    return false;
   }
 }

@@ -1,8 +1,10 @@
 {
   "name": "@sinedied/mini-scraper",
+  "productName": "Mini Scraper",
   "description": "Artwork scraper for handheld emulators.",
   "version": "2.0.0",
   "type": "module",
+  "main": "lib/desktop/main.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/sinedied/mini-scraper.git"
@@ -16,6 +18,9 @@
     "start": "npm run build && node \"./bin/mscraper.js\"",
     "build": "npm run clean -s && tsc",
     "build:watch": "tsc -w --sourceMap",
+    "desktop": "npm run build && electron .",
+    "desktop:package": "node scripts/check-desktop-node.cjs && npm run build && electron-forge package",
+    "desktop:make": "node scripts/check-desktop-node.cjs && npm run build && electron-forge make",
     "lint": "xo",
     "lint:fix": "xo --fix",
     "test": "npm run lint && npm run build && vitest run",
@@ -55,6 +60,7 @@
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.8.11",
+    "bootstrap": "^5.3.8",
     "commander": "^15.0.0",
     "debug": "^4.4.3",
     "fast-glob": "^3.3.3",
@@ -66,9 +72,12 @@
     "update-notifier": "^7.3.1"
   },
   "devDependencies": {
+    "@electron-forge/cli": "^7.11.2",
+    "@electron-forge/maker-zip": "^7.11.2",
     "@types/debug": "^4.1.13",
     "@types/node": "^22.20.1",
     "@types/update-notifier": "^6.0.8",
+    "electron": "^43.4.1",
     "prettier": "^3.9.5",
     "semantic-release": "^25.0.7",
     "semantic-release-npm-github": "^6.0.0",
@@ -83,7 +92,8 @@
   "xo": [
     {
       "ignores": [
-        "**/*.md"
+        "**/*.md",
+        "desktop/**"
       ]
     },
     {
@@ -136,6 +146,7 @@
   ],
   "files": [
     "bin",
+    "desktop",
     "lib"
   ],
   "publishConfig": {

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'" />
+    <title>Mini Scraper</title>
+    <link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="hero-copy">
+          <span class="eyebrow">MINI SCRAPER / HOME</span>
+          <h1>Mini Scraper</h1>
+          <p>Scrape artwork for your ROMs in 3 clicks.</p>
+        </div>
+        <div class="compatibility" aria-label="Supported frontends">
+          <span class="compat-title">WORKS WITH</span>
+          <div class="compat-grid">
+            <div class="compat-item"><img src="./assets/frontends/muos.png" alt="" /><span>muOS</span></div>
+            <div class="compat-item"><img src="./assets/frontends/nextui.png" alt="" /><span>NextUI</span></div>
+            <div class="compat-item"><img src="./assets/frontends/onionos.svg" alt="" /><span>OnionOS</span></div>
+            <div class="compat-item"><img src="./assets/frontends/knulli.png" alt="" /><span>KNULLI</span></div>
+            <div class="compat-item"><img src="./assets/frontends/spruce.png" alt="" /><span>SpruceOS</span></div>
+            <div class="compat-item wide"><img src="./assets/frontends/treefrogui.png" alt="" /><span>TreeFrogUI</span></div>
+          </div>
+          <p>MinUI · GarlicOS · AlliumOS · and more</p>
+        </div>
+      </header>
+
+      <div class="source-strip" aria-label="Artwork source">
+        <div class="source-icon" aria-hidden="true"></div>
+        <div class="source-copy">
+          <p>Artwork from Libretro Thumbnails · no account needed</p>
+          <p class="source-note">KNULLI calls it scraped media. Mini Scraper saves boxart, images, and titleshots in each system’s images folder and updates gamelist.xml.</p>
+        </div>
+        <span>ONLINE</span>
+      </div>
+
+      <section class="card picker shadow-sm">
+        <div class="card-body d-flex align-items-center justify-content-between gap-3">
+          <div class="min-w-0">
+            <h2 class="card-title h6">1. Choose your SD card or ROM folder</h2>
+            <p id="path" class="card-text text-secondary">No folder selected</p>
+          </div>
+          <button id="choose" class="btn btn-outline-primary flex-shrink-0">Browse ROMs</button>
+        </div>
+      </section>
+
+      <section id="library" class="card shadow-sm hidden" aria-live="polite">
+        <div class="card-body">
+          <div class="summary row g-2">
+            <div class="col"><div class="stat border rounded bg-light"><span>Detected UI</span><strong id="detected">Unknown</strong></div></div>
+            <div class="col"><div class="stat border rounded bg-light"><span>Systems</span><strong id="systems-count">0</strong></div></div>
+            <div class="col"><div class="stat border rounded bg-light"><span>Games</span><strong id="games-count">0</strong></div></div>
+          </div>
+          <button class="btn btn-link btn-sm px-0 mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#systems-collapse" aria-expanded="false" aria-controls="systems-collapse">Show detected systems</button>
+          <div id="systems-collapse" class="collapse">
+            <ul id="systems" class="mb-0"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="settings" class="card shadow-sm hidden">
+        <div class="card-body">
+          <h2 class="card-title h6">2. Artwork settings</h2>
+          <div class="row g-3 mt-0">
+            <label class="col-md-5 form-label">
+              Frontend
+              <select id="format" class="form-select mt-1">
+              <option value="">Choose frontend…</option>
+              <option value="minui">MinUI</option>
+              <option value="nextui">NextUI</option>
+              <option value="muos">muOS</option>
+              <option value="knulli">Knulli</option>
+              <option value="treefrogui">TreeFrogUI</option>
+              <option value="onionos">OnionOS</option>
+              <option value="garlicos">GarlicOS</option>
+              <option value="spruceos">SpruceOS</option>
+              <option value="alliumos">AlliumOS</option>
+              <option value="anbernic">Anbernic</option>
+              <option value="funkey">FunKey</option>
+              </select>
+            </label>
+            <label class="col-md-4 form-label">
+              Artwork
+              <select id="type" class="form-select mt-1">
+              <option value="boxart">Box art</option>
+              <option value="snap">Screenshot</option>
+              <option value="title">Title screen</option>
+              <option value="box+snap">Box art + screenshot</option>
+              <option value="box+title">Box art + title screen</option>
+              </select>
+            </label>
+            <label class="col-md-3 form-label">
+              Max width
+              <input id="width" class="form-control mt-1" type="number" min="50" max="2000" value="300" />
+            </label>
+          </div>
+          <div class="form-check mt-3">
+            <input id="force" class="form-check-input" type="checkbox" />
+            <label class="form-check-label" for="force">Replace existing artwork</label>
+          </div>
+        </div>
+      </section>
+
+      <section id="actions" class="actions d-flex gap-2 hidden">
+        <button id="start" class="btn btn-primary">Add artwork</button>
+        <button id="cancel" class="btn btn-outline-secondary hidden">Cancel</button>
+      </section>
+
+      <section id="progress-card" class="card shadow-sm hidden" aria-live="polite">
+        <div class="card-body">
+          <div class="progress-heading"><strong id="progress-label">Preparing…</strong><span id="progress-value" class="badge text-bg-primary">0%</span></div>
+          <progress id="progress" class="w-100" max="100" value="0"></progress>
+          <p id="current-game" class="small text-secondary"></p>
+        </div>
+      </section>
+
+      <p id="message" class="message alert alert-info rounded-0 mb-0" role="status"></p>
+
+    </main>
+    <script src="../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

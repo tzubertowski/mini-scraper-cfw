@@ -37,11 +37,17 @@ async function countGames(folderPath: string, machine: string) {
   return files.length;
 }
 
+// Common card-level application folders are not ROM systems. Some firmware
+// layouts keep them alongside the ROM directories, so never present them as
+// selectable scrape targets.
+const nonRomApplicationFolders = new Set(['ebook', 'images', 'videos']);
+
 async function scanRomRoot(romRootPath: string): Promise<SystemScan[]> {
   if (!(await directoryExists(romRootPath))) return [];
   const entries = await fs.readdir(romRootPath, { withFileTypes: true });
   const systems: SystemScan[] = [];
   for (const entry of entries) {
+    if (nonRomApplicationFolders.has(entry.name.toLowerCase())) continue;
     if (!entry.isDirectory() || !isRomFolder(entry.name)) continue;
     const machine = getMachine(entry.name, true);
     if (!machine) continue;

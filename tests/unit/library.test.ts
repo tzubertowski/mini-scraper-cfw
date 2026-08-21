@@ -24,6 +24,9 @@ describe('reusable scraper core', () => {
     const root = await createRoot('library');
     await fs.mkdir(path.join(root, 'roms', 'GBC'), { recursive: true });
     await fs.mkdir(path.join(root, 'roms', 'GBA'), { recursive: true });
+    await fs.mkdir(path.join(root, 'roms', 'ebook'), { recursive: true });
+    await fs.mkdir(path.join(root, 'roms', 'images'), { recursive: true });
+    await fs.mkdir(path.join(root, 'roms', 'videos'), { recursive: true });
     await fs.writeFile(path.join(root, 'roms', 'GBC', 'Shantae.gbc'), 'rom');
     await fs.writeFile(path.join(root, 'roms', 'GBC', 'Readme.txt'), 'ignore');
     await fs.writeFile(path.join(root, 'roms', 'GBA', 'Apotris.gba'), 'rom');

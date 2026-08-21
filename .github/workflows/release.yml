@@ -33,8 +33,10 @@ jobs:
     - uses: actions/setup-node@v7
       with:
         node-version: 24
-        registry-url: https://registry.npmjs.org
-    - run: npm install -g npm@latest && npm ci
+        cache: npm
+    - name: Use npm 11
+      run: npm install --global npm@11
+    - run: npm ci
     - run: npm run test
     - run: npm run build
     - name: Record current release
@@ -99,6 +101,8 @@ jobs:
     - name: Install ZIP tool
       if: runner.os == 'Linux'
       run: sudo apt-get update && sudo apt-get install --yes zip
+    - name: Use npm 11
+      run: npm install --global npm@11
     - run: npm ci
     - name: Set desktop app version from release tag
       env:

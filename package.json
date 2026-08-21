@@ -86,8 +86,12 @@
     "xo": "^4.0.0"
   },
   "release": {
-    "extends": "semantic-release-npm-github",
-    "branches": "main"
+    "branches": "main",
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/github"
+    ]
   },
   "xo": [
     {

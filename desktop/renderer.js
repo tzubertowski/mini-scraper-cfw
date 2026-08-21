@@ -10,6 +10,11 @@ const elements = {
   systems: document.querySelector('#systems'),
   format: document.querySelector('#format'),
   type: document.querySelector('#type'),
+  artworkPreviewPrimary: document.querySelector('#artwork-preview-primary'),
+  artworkPreviewPrimaryLabel: document.querySelector('#artwork-preview-primary-label'),
+  artworkPreviewSecondaryWrap: document.querySelector('#artwork-preview-secondary-wrap'),
+  artworkPreviewSecondary: document.querySelector('#artwork-preview-secondary'),
+  artworkPreviewSecondaryLabel: document.querySelector('#artwork-preview-secondary-label'),
   width: document.querySelector('#width'),
   force: document.querySelector('#force'),
   start: document.querySelector('#start'),
@@ -35,6 +40,33 @@ function setBusy(busy) {
   elements.force.disabled = busy;
   elements.cancel.disabled = !busy;
   show(elements.cancel, busy);
+}
+
+const artworkPreviews = {
+  boxart: [{ file: 'wario-land-3-boxart.png', label: 'Box art', alt: 'Wario Land 3 box art' }],
+  snap: [{ file: 'wario-land-3-screenshot.png', label: 'Screenshot', alt: 'Wario Land 3 gameplay screenshot' }],
+  title: [{ file: 'wario-land-3-title.png', label: 'Title screen', alt: 'Wario Land 3 title screen' }],
+  'box+snap': [
+    { file: 'wario-land-3-boxart.png', label: 'Box art', alt: 'Wario Land 3 box art' },
+    { file: 'wario-land-3-screenshot.png', label: 'Screenshot', alt: 'Wario Land 3 gameplay screenshot' }
+  ],
+  'box+title': [
+    { file: 'wario-land-3-boxart.png', label: 'Box art', alt: 'Wario Land 3 box art' },
+    { file: 'wario-land-3-title.png', label: 'Title screen', alt: 'Wario Land 3 title screen' }
+  ]
+};
+
+function updateArtworkPreview() {
+  const [primary, secondary] = artworkPreviews[elements.type.value] ?? artworkPreviews.boxart;
+  elements.artworkPreviewPrimary.src = `./assets/artwork-preview/${primary.file}`;
+  elements.artworkPreviewPrimary.alt = primary.alt;
+  elements.artworkPreviewPrimaryLabel.textContent = primary.label;
+  show(elements.artworkPreviewSecondaryWrap, Boolean(secondary));
+  if (secondary) {
+    elements.artworkPreviewSecondary.src = `./assets/artwork-preview/${secondary.file}`;
+    elements.artworkPreviewSecondary.alt = secondary.alt;
+    elements.artworkPreviewSecondaryLabel.textContent = secondary.label;
+  }
 }
 
 elements.choose.addEventListener('click', async () => {
@@ -75,6 +107,8 @@ elements.choose.addEventListener('click', async () => {
 elements.format.addEventListener('change', () => {
   elements.start.disabled = !elements.format.value;
 });
+
+elements.type.addEventListener('change', updateArtworkPreview);
 
 window.miniScraper.onProgress((progress) => {
   const percentage = progress.total ? Math.min(100, Math.round((progress.completed / progress.total) * 100)) : 0;

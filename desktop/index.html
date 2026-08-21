@@ -66,6 +66,22 @@
       <section id="settings" class="card shadow-sm hidden">
         <div class="card-body">
           <h2 class="card-title h6">2. Artwork settings</h2>
+          <figure class="artwork-preview mt-3" aria-labelledby="artwork-preview-title">
+            <div class="preview-images" aria-live="polite">
+              <div class="preview-image-wrap">
+                <img id="artwork-preview-primary" src="./assets/artwork-preview/wario-land-3-boxart.png" alt="Wario Land 3 box art" />
+                <span id="artwork-preview-primary-label">Box art</span>
+              </div>
+              <div id="artwork-preview-secondary-wrap" class="preview-image-wrap hidden">
+                <img id="artwork-preview-secondary" src="./assets/artwork-preview/wario-land-3-screenshot.png" alt="Wario Land 3 gameplay screenshot" />
+                <span id="artwork-preview-secondary-label">Screenshot</span>
+              </div>
+            </div>
+            <figcaption>
+              <strong id="artwork-preview-title">Preview: Wario Land 3</strong>
+              <span>This is how the selected artwork type will look. Actual images vary by game.</span>
+            </figcaption>
+          </figure>
           <div class="row g-3 mt-0">
             <label class="col-md-5 form-label">
               Frontend

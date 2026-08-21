@@ -158,6 +158,47 @@ header h1 { margin: 4px 0 6px; color: #fff; font-size: 36px; font-weight: 400; }
 .stat span { display: block; margin-bottom: 3px; color: #6c757d; font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .stat strong { display: block; color: #343a40; font-size: 18px; font-weight: 400; }
 
+.artwork-preview {
+  display: flex;
+  min-height: 150px;
+  align-items: center;
+  gap: 18px;
+  padding: 12px;
+  border: 1px solid #c9d7df;
+  border-radius: var(--bs-border-radius);
+  background: #f1f6f9;
+}
+
+.preview-images {
+  display: flex;
+  min-width: 250px;
+  min-height: 124px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #b7c8d2;
+  border-radius: 3px;
+  background: #25303a;
+}
+
+.preview-image-wrap { position: relative; }
+.preview-image-wrap img { display: block; width: 108px; height: 108px; object-fit: contain; image-rendering: pixelated; }
+.preview-image-wrap span {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, .76);
+  color: #fff;
+  font-size: 9px;
+}
+
+.artwork-preview figcaption { color: #657b88; font-size: 12px; }
+.artwork-preview figcaption strong { display: block; margin-bottom: 4px; color: #343a40; font-size: 14px; }
+.artwork-preview figcaption span { display: block; }
+
 #systems { columns: 2; font-size: 13px; }
 #systems li { padding: 2px 0; }
 
@@ -183,5 +224,7 @@ progress::-moz-progress-bar { background: var(--bs-primary); }
   .source-strip > span { display: none; }
   .card, .actions { margin-right: 12px; margin-left: 12px; }
   .picker .card-body { align-items: stretch !important; flex-direction: column; }
+  .artwork-preview { align-items: stretch; flex-direction: column; }
+  .preview-images { min-width: 0; }
   #systems { columns: 1; }
 }

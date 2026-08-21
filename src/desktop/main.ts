@@ -4,6 +4,13 @@ import { pathToFileURL } from 'node:url';
 import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron';
 import { type Options } from '../options.js';
 import { type LibraryScan } from '../core/index.js';
+import {
+  clearLegacyScreenScraperAccount,
+  clearRetroAchievementsAccount,
+  loadRetroAchievementsAccount,
+  saveRetroAchievementsAccount,
+  type SavedRetroAchievementsAccount
+} from './credential-store.js';
 
 const channels = {
   chooseFolder: 'library:choose-folder',
@@ -11,7 +18,10 @@ const channels = {
   scrape: 'scrape:start',
   cancel: 'scrape:cancel',
   progress: 'scrape:progress',
-  networkStatus: 'scrape:network-status'
+  networkStatus: 'scrape:network-status',
+  retroAchievementsSession: 'retroachievements:session',
+  retroAchievementsLogin: 'retroachievements:login',
+  retroAchievementsLogout: 'retroachievements:logout'
 } as const;
 
 let selectedLibrary: LibraryScan | undefined;
@@ -80,6 +90,12 @@ async function createOptions(input: unknown): Promise<Options> {
 
   const mediaPath = typeof value.mediaPath === 'string' && value.mediaPath.trim() ? value.mediaPath.trim() : undefined;
   if (output === 'esde' && !mediaPath) throw new Error('Choose the ES-DE downloaded_media folder');
+  const artworkSource = value.artworkSource === 'retroachievements' ? 'retroachievements' : 'automatic';
+  const retroAchievementsCredentials =
+    artworkSource === 'retroachievements' ? await loadRetroAchievementsAccount() : undefined;
+  if (artworkSource === 'retroachievements' && !retroAchievementsCredentials) {
+    throw new Error('Connect RetroAchievements before scraping.');
+  }
 
   return {
     width,
@@ -93,8 +109,22 @@ async function createOptions(input: unknown): Promise<Options> {
     batchSize,
     batchDelayMs,
     batchRetries,
-    mediaPath
+    mediaPath,
+    artworkSource,
+    retroAchievementsCredentials
   };
+}
+
+function validAccount(input: unknown): SavedRetroAchievementsAccount {
+  if (!input || typeof input !== 'object') {
+    throw new TypeError('Enter your RetroAchievements username and Web API key.');
+  }
+
+  const value = input as Record<string, unknown>;
+  const username = typeof value.username === 'string' ? value.username.trim() : '';
+  const webApiKey = typeof value.webApiKey === 'string' ? value.webApiKey.trim() : '';
+  if (!username || !webApiKey) throw new Error('Enter your RetroAchievements username and Web API key.');
+  return { username, webApiKey };
 }
 
 function assertTrustedSender(event: IpcMainInvokeEvent) {
@@ -103,6 +133,35 @@ function assertTrustedSender(event: IpcMainInvokeEvent) {
 }
 
 function registerHandlers() {
+  ipcMain.handle(channels.retroAchievementsSession, async (event) => {
+    assertTrustedSender(event);
+    const account = await loadRetroAchievementsAccount();
+    return {
+      authenticated: Boolean(account),
+      username: account?.username
+    };
+  });
+
+  ipcMain.handle(channels.retroAchievementsLogin, async (event, input: unknown) => {
+    assertTrustedSender(event);
+    const account = validAccount(input);
+    const { authenticateRetroAchievements } = await import('../retroachievements.js');
+    const session = await authenticateRetroAchievements({
+      credentials: {
+        ...account,
+        baseUrl: process.env.MSCRAPER_RETROACHIEVEMENTS_URL
+      }
+    });
+    await saveRetroAchievementsAccount(account);
+    return { authenticated: true, username: session.username };
+  });
+
+  ipcMain.handle(channels.retroAchievementsLogout, async (event) => {
+    assertTrustedSender(event);
+    await clearRetroAchievementsAccount();
+    return { authenticated: false };
+  });
+
   ipcMain.handle(channels.chooseFolder, async (event) => {
     assertTrustedSender(event);
     const result = await dialog.showOpenDialog({
@@ -157,6 +216,7 @@ function registerHandlers() {
 }
 
 app.once('ready', () => {
+  void clearLegacyScreenScraperAccount();
   registerHandlers();
   createWindow();
 });

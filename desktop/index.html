@@ -33,16 +33,37 @@
       <div class="source-strip" aria-label="Artwork source">
         <div class="source-icon" aria-hidden="true"></div>
         <div class="source-copy">
-          <p>Artwork from Libretro Thumbnails · no account needed</p>
-          <p class="source-note">KNULLI calls it scraped media. Mini Scraper saves boxart, images, and titleshots in each system’s images folder and updates gamelist.xml.</p>
+          <p id="source-title">Artwork from Libretro Thumbnails · no account needed</p>
+          <p id="source-note" class="source-note">Automatic is ready immediately. Choose RetroAchievements in step 1 to use your account.</p>
         </div>
         <span>ONLINE</span>
       </div>
 
       <section class="card picker shadow-sm">
+        <div class="card-body">
+          <h2 class="card-title h6">1. Source</h2>
+          <label class="form-label mt-2" for="artwork-source">Artwork source</label>
+          <select id="artwork-source" class="form-select">
+            <option value="automatic">Automatic · Libretro · no login</option>
+            <option value="retroachievements">RetroAchievements · personal API key</option>
+          </select>
+          <div id="retroachievements-login" class="retroachievements-login mt-3 hidden">
+            <div id="retroachievements-login-prompt" class="d-flex align-items-center justify-content-between gap-3">
+              <span><strong>RetroAchievements is locked</strong><small class="d-block text-secondary">Connect your account to continue to step 2</small></span>
+              <button id="retroachievements-open-login" class="btn btn-outline-primary btn-sm" type="button">Connect</button>
+            </div>
+            <div id="retroachievements-connected" class="d-flex align-items-center justify-content-between gap-3 hidden">
+              <span><strong id="retroachievements-connected-user"></strong><small class="d-block text-secondary">RetroAchievements account verified and saved securely</small></span>
+              <button id="retroachievements-forget" class="btn btn-outline-secondary btn-sm" type="button">Forget account</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="picker" class="card picker shadow-sm">
         <div class="card-body d-flex align-items-center justify-content-between gap-3">
           <div class="min-w-0">
-            <h2 class="card-title h6">1. Choose your SD card or ROM folder</h2>
+            <h2 class="card-title h6">2. Choose your SD card or ROM folder</h2>
             <p id="path" class="card-text text-secondary">No folder selected</p>
           </div>
           <button id="choose" class="btn btn-outline-primary flex-shrink-0">Browse ROMs</button>
@@ -65,7 +86,7 @@
 
       <section id="settings" class="card shadow-sm hidden">
         <div class="card-body">
-          <h2 class="card-title h6">2. Artwork settings</h2>
+          <h2 class="card-title h6">3. Artwork settings</h2>
           <figure class="artwork-preview mt-3" aria-labelledby="artwork-preview-title">
             <div class="preview-images" aria-live="polite">
               <div class="preview-image-wrap">
@@ -133,7 +154,7 @@
 
       <section id="advanced" class="card shadow-sm hidden">
         <details class="advanced-settings">
-          <summary><span>3. Advanced settings</span><small>Batching, delays &amp; automatic retries</small></summary>
+          <summary><span>4. Advanced settings</span><small>Batching, delays &amp; automatic retries</small></summary>
           <div class="advanced-settings-body">
             <div class="row g-3 mt-0">
               <label class="col-md-4 form-label">
@@ -171,6 +192,33 @@
       <p id="message" class="message alert alert-info rounded-0 mb-0" role="status"></p>
 
     </main>
+
+    <dialog id="retroachievements-dialog" class="login-dialog">
+      <form id="retroachievements-form">
+        <div class="login-dialog-heading">
+          <div>
+            <span class="eyebrow text-primary">ARTWORK SOURCE</span>
+            <h2 class="h5 mb-1">Connect RetroAchievements</h2>
+            <p class="small text-secondary mb-0">Use your username and personal Web API key. Mini Scraper needs no developer approval.</p>
+          </div>
+          <button id="retroachievements-close" class="btn-close" type="button" aria-label="Close"></button>
+        </div>
+        <label class="form-label mt-3">
+          Username
+          <input id="retroachievements-username" class="form-control mt-1" autocomplete="username" autofocus />
+        </label>
+        <label class="form-label">
+          Web API key
+          <input id="retroachievements-api-key" class="form-control mt-1" type="password" autocomplete="off" />
+        </label>
+        <p class="small text-secondary">Find it at RetroAchievements → Profile → Settings → Applications. It is saved using this computer's encrypted credential storage and never shown in logs.</p>
+        <div id="retroachievements-message" class="small mb-3" role="status"></div>
+        <div class="d-flex justify-content-end gap-2">
+          <button id="retroachievements-cancel-login" class="btn btn-outline-secondary" type="button">Cancel</button>
+          <button id="retroachievements-connect" class="btn btn-primary" type="submit">Connect and save</button>
+        </div>
+      </form>
+    </dialog>
     <script src="../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="./renderer.js"></script>
   </body>

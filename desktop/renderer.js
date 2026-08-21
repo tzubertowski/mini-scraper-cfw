@@ -1,10 +1,28 @@
 const elements = {
   choose: document.querySelector('#choose'),
+  sourceTitle: document.querySelector('#source-title'),
+  sourceNote: document.querySelector('#source-note'),
   path: document.querySelector('#path'),
+  picker: document.querySelector('#picker'),
   library: document.querySelector('#library'),
   settings: document.querySelector('#settings'),
   advanced: document.querySelector('#advanced'),
   actions: document.querySelector('#actions'),
+  artworkSource: document.querySelector('#artwork-source'),
+  retroAchievementsLogin: document.querySelector('#retroachievements-login'),
+  retroAchievementsLoginPrompt: document.querySelector('#retroachievements-login-prompt'),
+  retroAchievementsOpenLogin: document.querySelector('#retroachievements-open-login'),
+  retroAchievementsDialog: document.querySelector('#retroachievements-dialog'),
+  retroAchievementsForm: document.querySelector('#retroachievements-form'),
+  retroAchievementsUsername: document.querySelector('#retroachievements-username'),
+  retroAchievementsApiKey: document.querySelector('#retroachievements-api-key'),
+  retroAchievementsConnect: document.querySelector('#retroachievements-connect'),
+  retroAchievementsClose: document.querySelector('#retroachievements-close'),
+  retroAchievementsCancelLogin: document.querySelector('#retroachievements-cancel-login'),
+  retroAchievementsConnected: document.querySelector('#retroachievements-connected'),
+  retroAchievementsConnectedUser: document.querySelector('#retroachievements-connected-user'),
+  retroAchievementsForget: document.querySelector('#retroachievements-forget'),
+  retroAchievementsMessage: document.querySelector('#retroachievements-message'),
   detected: document.querySelector('#detected'),
   systemsCount: document.querySelector('#systems-count'),
   gamesCount: document.querySelector('#games-count'),
@@ -35,26 +53,71 @@ const elements = {
   message: document.querySelector('#message')
 };
 
+const ARTWORK_SOURCE_STORAGE_KEY = 'mini-scraper.artwork-source';
+
 function show(element, visible = true) {
   element.classList.toggle('hidden', !visible);
 }
 
 let networkStatusTimer;
+let busy = false;
+let authenticationBusy = false;
+let libraryHasGames = false;
+let retroAchievementsSession = { authenticated: false };
 
-function setBusy(busy) {
+function resetLibraryView() {
+  libraryHasGames = false;
+  elements.path.textContent = 'No folder selected';
+  show(elements.library, false);
+  show(elements.settings, false);
+  show(elements.advanced, false);
+  show(elements.actions, false);
+  show(elements.progressCard, false);
+}
+
+function sourceReady() {
+  return elements.artworkSource.value === 'automatic' || retroAchievementsSession.authenticated;
+}
+
+function readableError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/^Error invoking remote method '[^']+': Error: /, '');
+}
+
+function refreshControls() {
+  const locked = !sourceReady();
   elements.choose.disabled = busy;
-  elements.start.disabled = busy;
-  elements.format.disabled = busy;
-  elements.type.disabled = busy;
-  elements.mediaPath.disabled = busy;
-  elements.chooseMedia.disabled = busy;
-  elements.batchSize.disabled = busy;
-  elements.batchDelay.disabled = busy;
-  elements.batchRetries.disabled = busy;
-  elements.width.disabled = busy;
-  elements.force.disabled = busy;
+  elements.artworkSource.disabled = busy;
+  elements.retroAchievementsUsername.disabled = busy || authenticationBusy;
+  elements.retroAchievementsApiKey.disabled = busy || authenticationBusy;
+  elements.retroAchievementsConnect.disabled = busy || authenticationBusy;
+  elements.retroAchievementsOpenLogin.disabled = busy || authenticationBusy;
+  elements.retroAchievementsClose.disabled = authenticationBusy;
+  elements.retroAchievementsCancelLogin.disabled = authenticationBusy;
+  elements.retroAchievementsForget.disabled = busy || authenticationBusy;
+  for (const element of [
+    elements.format,
+    elements.type,
+    elements.mediaPath,
+    elements.chooseMedia,
+    elements.batchSize,
+    elements.batchDelay,
+    elements.batchRetries,
+    elements.width,
+    elements.force
+  ]) {
+    element.disabled = busy || locked;
+  }
+
+  elements.start.disabled = busy || locked || !libraryHasGames || !elements.format.value;
   elements.cancel.disabled = !busy;
+  elements.advanced.classList.toggle('settings-locked', locked);
   show(elements.cancel, busy);
+}
+
+function setBusy(value) {
+  busy = value;
+  refreshControls();
 }
 
 const artworkPreviews = {
@@ -88,6 +151,93 @@ function updateFormatSettings() {
   show(elements.esdeMediaSetting, elements.format.value === 'esde');
 }
 
+function updateArtworkSource() {
+  const retroAchievements = elements.artworkSource.value === 'retroachievements';
+  elements.retroAchievementsMessage.classList.remove('text-danger', 'text-success');
+  show(elements.retroAchievementsLogin, retroAchievements);
+  show(elements.retroAchievementsLoginPrompt, retroAchievements && !retroAchievementsSession.authenticated);
+  show(elements.retroAchievementsConnected, retroAchievements && retroAchievementsSession.authenticated);
+  if (retroAchievementsSession.authenticated) {
+    elements.retroAchievementsConnectedUser.textContent = `Connected as ${retroAchievementsSession.username}`;
+  }
+
+  elements.sourceTitle.textContent = retroAchievements
+    ? retroAchievementsSession.authenticated
+      ? `Artwork from RetroAchievements · ${retroAchievementsSession.username}`
+      : 'Artwork from RetroAchievements · login required'
+    : 'Artwork from Libretro Thumbnails · no account needed';
+  elements.sourceNote.textContent = retroAchievements
+    ? 'RetroAchievements matches supported ROM hashes and uses Libretro automatically when artwork is unavailable.'
+    : 'Automatic is ready immediately. Choose RetroAchievements in step 1 to use your account.';
+  elements.retroAchievementsMessage.textContent = '';
+  if (retroAchievements && !retroAchievementsSession.authenticated && !elements.retroAchievementsDialog.open) {
+    elements.retroAchievementsDialog.showModal();
+  }
+  show(elements.picker, sourceReady());
+  refreshControls();
+}
+
+async function loadRetroAchievementsSession() {
+  try {
+    retroAchievementsSession = await window.miniScraper.getRetroAchievementsSession();
+    if (retroAchievementsSession.username) elements.retroAchievementsUsername.value = retroAchievementsSession.username;
+  } catch (error) {
+    elements.retroAchievementsMessage.textContent = readableError(error);
+    elements.retroAchievementsMessage.classList.add('text-danger');
+  }
+
+  updateArtworkSource();
+}
+
+elements.artworkSource.addEventListener('change', () => {
+  window.localStorage.setItem(ARTWORK_SOURCE_STORAGE_KEY, elements.artworkSource.value);
+  resetLibraryView();
+  updateArtworkSource();
+});
+
+elements.retroAchievementsOpenLogin.addEventListener('click', () => elements.retroAchievementsDialog.showModal());
+elements.retroAchievementsClose.addEventListener('click', () => elements.retroAchievementsDialog.close());
+elements.retroAchievementsCancelLogin.addEventListener('click', () => elements.retroAchievementsDialog.close());
+
+elements.retroAchievementsForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  authenticationBusy = true;
+  elements.retroAchievementsMessage.textContent = 'Checking your RetroAchievements username and Web API key…';
+  elements.retroAchievementsMessage.classList.remove('text-danger', 'text-success');
+  refreshControls();
+  try {
+    retroAchievementsSession = await window.miniScraper.loginRetroAchievements({
+      username: elements.retroAchievementsUsername.value,
+      webApiKey: elements.retroAchievementsApiKey.value
+    });
+    elements.retroAchievementsApiKey.value = '';
+    elements.retroAchievementsDialog.close();
+    updateArtworkSource();
+    elements.retroAchievementsMessage.textContent = 'Connected. Web API key saved securely on this computer.';
+    elements.retroAchievementsMessage.classList.add('text-success');
+  } catch (error) {
+    elements.retroAchievementsMessage.textContent = readableError(error);
+    elements.retroAchievementsMessage.classList.add('text-danger');
+  } finally {
+    authenticationBusy = false;
+    refreshControls();
+  }
+});
+
+elements.retroAchievementsForget.addEventListener('click', async () => {
+  authenticationBusy = true;
+  refreshControls();
+  try {
+    retroAchievementsSession = await window.miniScraper.logoutRetroAchievements();
+    elements.retroAchievementsApiKey.value = '';
+    resetLibraryView();
+    updateArtworkSource();
+  } finally {
+    authenticationBusy = false;
+    refreshControls();
+  }
+});
+
 elements.choose.addEventListener('click', async () => {
   elements.message.textContent = '';
   try {
@@ -111,6 +261,7 @@ elements.choose.addEventListener('click', async () => {
       : 'Not certain — please choose';
     elements.format.value = detection.format ?? '';
     elements.mediaPath.value = suggestedMediaPath;
+    libraryHasGames = library.totalGames > 0;
     updateFormatSettings();
     show(elements.library);
     show(elements.settings);
@@ -120,15 +271,15 @@ elements.choose.addEventListener('click', async () => {
     elements.message.textContent = library.totalGames
       ? 'Ready to scrape.'
       : 'No supported games were found in this folder.';
-    elements.start.disabled = library.totalGames === 0 || !detection.format;
+    refreshControls();
   } catch (error) {
     elements.message.textContent = error instanceof Error ? error.message : String(error);
   }
 });
 
 elements.format.addEventListener('change', () => {
-  elements.start.disabled = !elements.format.value;
   updateFormatSettings();
+  refreshControls();
 });
 
 elements.type.addEventListener('change', updateArtworkPreview);
@@ -170,6 +321,7 @@ elements.start.addEventListener('click', async () => {
   try {
     const result = await window.miniScraper.start({
       output: elements.format.value,
+      artworkSource: elements.artworkSource.value,
       type: elements.type.value,
       width: Number(elements.width.value),
       force: elements.force.checked,
@@ -201,3 +353,10 @@ elements.cancel.addEventListener('click', async () => {
   elements.message.textContent = 'Cancelling after the current game…';
   await window.miniScraper.cancel();
 });
+
+const savedArtworkSource = window.localStorage.getItem(ARTWORK_SOURCE_STORAGE_KEY);
+if (savedArtworkSource === 'automatic' || savedArtworkSource === 'retroachievements') {
+  elements.artworkSource.value = savedArtworkSource;
+}
+
+void loadRetroAchievementsSession();

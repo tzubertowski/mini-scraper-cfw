@@ -3,6 +3,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('miniScraper', {
   chooseFolder: () => ipcRenderer.invoke('library:choose-folder'),
   chooseMediaFolder: () => ipcRenderer.invoke('library:choose-media-folder'),
+  getRetroAchievementsSession: () => ipcRenderer.invoke('retroachievements:session'),
+  loginRetroAchievements: (credentials) => ipcRenderer.invoke('retroachievements:login', credentials),
+  logoutRetroAchievements: () => ipcRenderer.invoke('retroachievements:logout'),
   start: (options) => ipcRenderer.invoke('scrape:start', options),
   cancel: () => ipcRenderer.invoke('scrape:cancel'),
   onProgress: (listener) => {

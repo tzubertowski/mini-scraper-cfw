@@ -1,5 +1,6 @@
 import type OpenAI from 'openai';
 import type { DownloadManager, DownloadStatus } from './cache.js';
+import type { ArtworkProvider } from './source.js';
 
 export enum ArtTypeOption {
   Boxart = 'boxart',
@@ -8,6 +9,14 @@ export enum ArtTypeOption {
   BoxAndSnap = 'box+snap',
   BoxAndTitle = 'box+title'
 }
+
+export type ArtworkSourceId = 'automatic' | 'retroachievements';
+
+export type RetroAchievementsCredentials = {
+  username: string;
+  webApiKey: string;
+  baseUrl?: string;
+};
 
 export type Options = {
   width: number;
@@ -27,6 +36,9 @@ export type Options = {
   batchDelayMs?: number;
   batchRetries?: number;
   mediaPath?: string;
+  artworkSource?: ArtworkSourceId;
+  retroAchievementsCredentials?: RetroAchievementsCredentials;
+  artworkProvider?: ArtworkProvider;
   downloadManager?: DownloadManager;
   onDownloadStatus?: (status: DownloadStatus) => void;
   downloadSignal?: AbortSignal;

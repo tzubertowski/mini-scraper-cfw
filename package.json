@@ -42,6 +42,7 @@
     "spruceos",
     "alliumos",
     "es-de",
+    "retroachievements",
     "electron",
     "scraper",
     "boxart",
@@ -70,6 +71,7 @@
     "fastest-levenshtein": "^1.0.16",
     "jimp": "^1.6.1",
     "openai": "^6.48.0",
+    "rcheevos": "^0.1.4",
     "string-comparison": "^1.3.0",
     "update-notifier": "^7.3.1"
   },

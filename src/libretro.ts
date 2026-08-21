@@ -10,6 +10,7 @@ import { getOutputFormat, type OutputFormat } from './format/format.js';
 import { ArtType } from './art.js';
 import { pathExists, sanitizeName, stripMetadata } from './file.js';
 import { DownloadManager } from './cache.js';
+import { RetroAchievementsClient } from './retroachievements.js';
 
 const debug = createDebug('libretro');
 
@@ -78,7 +79,7 @@ export async function listScrapeFiles(folderPath: string, machine: string) {
 export async function scrapeFolder(folderPath: string, options: Options, runtime: ScrapeFolderRuntime = {}) {
   options.downloadSignal = runtime.signal;
   options.downloadManager ??= new DownloadManager(options);
-  debug('Options:', options);
+  debug('Options:', safeOptions(options));
   const folderMachine = getMachine(path.basename(folderPath), true);
   console.info(`Scraping folder: ${folderPath} [Detected: ${folderMachine}]`);
   if (!folderMachine) return;
@@ -152,8 +153,8 @@ async function scrapeFile(folderPath: string, file: string, machine: string, for
   }
 
   debug(`Machine: ${machine} (file: ${filePath})`);
-  const art1Url = await findArtUrl(filePath, machine, options, artTypes.art1);
-  const art2Url = artTypes.art2 ? await findArtUrl(filePath, machine, options, artTypes.art2) : undefined;
+  const art1Url = await findArtworkUrl(filePath, machine, options, artTypes.art1);
+  const art2Url = artTypes.art2 ? await findArtworkUrl(filePath, machine, options, artTypes.art2) : undefined;
   const result = await format.exportArtwork(art1Url, art2Url, artPath, options);
   if (!result) console.info(`No art found for "${filePath}"`);
 }
@@ -174,7 +175,7 @@ async function scrapeSeparateArtwork(context: {
     stats.skipped++;
   } else {
     debug(`Machine: ${machine} (file: ${searchPath})`);
-    const artUrl = await findArtUrl(searchPath, machine, options, type);
+    const artUrl = await findArtworkUrl(searchPath, machine, options, type);
     const result = await format.exportArtwork(artUrl, undefined, artworkPath, options);
     if (!result) {
       console.info(`No art found for "${searchPath}"`);
@@ -183,6 +184,34 @@ async function scrapeSeparateArtwork(context: {
   }
 
   await format.registerArtwork?.({ folderPath, romPath, artworkPath, machine, type, options });
+}
+
+export async function findArtworkUrl(
+  filePath: string,
+  machine: string,
+  options: Options,
+  type: ArtType = ArtType.Boxart
+) {
+  if ((options.artworkSource ?? 'automatic') === 'automatic') return findArtUrl(filePath, machine, options, type);
+  if (!options.retroAchievementsCredentials) throw new Error('Connect RetroAchievements before scraping.');
+  options.artworkProvider ??= new RetroAchievementsClient({
+    credentials: options.retroAchievementsCredentials,
+    downloadManager: options.downloadManager,
+    signal: options.downloadSignal
+  });
+  const artwork = await options.artworkProvider.findArtwork({ filePath, machine, type });
+  return artwork ?? findArtUrl(filePath, machine, options, type);
+}
+
+function safeOptions(options: Options) {
+  const { retroAchievementsCredentials, artworkProvider, ...safe } = options;
+  return {
+    ...safe,
+    artworkProvider: artworkProvider?.id,
+    retroAchievementsCredentials: retroAchievementsCredentials
+      ? { username: retroAchievementsCredentials.username, webApiKey: '[redacted]' }
+      : undefined
+  };
 }
 
 export async function findArtUrl(

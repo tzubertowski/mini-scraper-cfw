@@ -9,6 +9,8 @@ export * from './ai.js';
 export * from './options.js';
 export * from './stats.js';
 export * from './cache.js';
+export type * from './source.js';
+export * from './retroachievements.js';
 export * from './format/format.js';
 export * from './core/index.js';
 export * as minui from './format/minui.js';

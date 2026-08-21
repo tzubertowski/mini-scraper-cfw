@@ -17,7 +17,7 @@ Artwork scraper for MinUI, NextUI, muOS, Knulli, ES-DE, TreeFrogUI, OnionOS, Gar
 **Features:**
 - Scrapes boxart for your ROMs, in a compatible format with multiple frontends/OSes
 - Includes an Electron desktop app with folder selection, automatic frontend detection, progress, and cancellation
-- No account needed, uses [libretro thumbnails](https://github.com/libretro-thumbnails/libretro-thumbnails)
+- Uses [Libretro Thumbnails](https://github.com/libretro-thumbnails/libretro-thumbnails) automatically with no account, or an authenticated [RetroAchievements](https://retroachievements.org/) account
 - Keeps a persistent local source-image cache and spaces network traffic into retryable batches
 - Optionally uses local AI (via [Ollama](https://ollama.com/) or any OpenAI-compatible API) for better boxart matching
 - No configuration needed
@@ -48,9 +48,11 @@ The CLI and development setup require [Node.js >22.14](https://nodejs.org/), and
 
 The desktop app is built with Electron and is the easiest way to use Mini Scraper:
 
-1. Open Mini Scraper and choose the SD card or ROM folder.
-2. Confirm the detected frontend and preview the artwork style.
-3. Select **Add artwork**.
+1. Choose the artwork source. **Automatic** uses Libretro immediately; **RetroAchievements** requires a verified login.
+2. Once the source is ready, choose the SD card or ROM folder.
+3. Confirm the detected frontend and preview the artwork style, then select **Add artwork**.
+
+The default **Automatic** artwork source uses Libretro Thumbnails and never asks for an account, so step 2 is visible immediately. Selecting **RetroAchievements** opens a connection window and hides step 2 and everything after it until the API verifies the username and personal Web API key. The desktop app saves them with Electron's encrypted `safeStorage`; **Forget account** removes the saved credentials and locks the later steps again.
 
 For ES-DE, Mini Scraper detects or suggests the sibling `ES-DE/downloaded_media` directory. You can choose a custom Game media directory before scraping. ES-DE media is matched by ROM filename, so Mini Scraper does not create or update `gamelist.xml` for this format.
 
@@ -134,6 +136,9 @@ When running the scraper, you can pass the following options:
 - `--batch-delay-ms <ms>`: Pause between batches and failed-request retries (default: `1000`)
 - `--batch-retries <count>`: Retry count for failed downloads (default: `2`)
 - `--media-path <path>`: ES-DE `downloaded_media` directory; otherwise inferred beside the ROM root
+- `--source <source>`: Artwork source (`automatic` or `retroachievements`; default: `automatic`)
+- `--retroachievements-user <name>`: RetroAchievements username, or set `RETROACHIEVEMENTS_USER`
+- `--retroachievements-key <key>`: Personal RetroAchievements Web API key, or set `RETROACHIEVEMENTS_API_KEY`
 - `--cleanup`: Removes all scraped images in target folder
 - `--verbose`: Show detailed logs
 - `-v, --version`: Show current version
@@ -157,6 +162,28 @@ When running the scraper, you can pass the following options:
 | `esde` | `downloaded_media/<system>/<media type>/<ROM stem>.png` | Uses `covers`, `screenshots`, and `titlescreens`; `es-de` is an alias |
 | `anbernic` | `Imgs/<ROM stem>.png` | Existing stock-style layout |
 | `funkey` | `<ROM stem>.png` | Artwork beside the ROM |
+
+## Artwork sources
+
+### Automatic (Libretro)
+
+Automatic is the zero-configuration default. It matches cleaned ROM filenames against Libretro Thumbnails and does not require an account.
+
+### RetroAchievements
+
+RetroAchievements uses the official `rcheevos` hashing implementation to match supported ROMs against its per-system hash lists. Exact matches can provide box art, gameplay screenshots and title screens. Mini Scraper caches the large hash lists and game metadata locally, reuses one lookup for multiple requested artwork types, and automatically falls back to Libretro when RetroAchievements does not recognize a ROM or lacks the selected image.
+
+There are no application credentials or developer approval. Sign in at RetroAchievements, open **Profile → Settings → Applications**, and copy your Web API key. Treat the key like a password.
+
+For the CLI, supply the username and personal key through environment variables or the matching command-line options. Environment variables keep the key out of shell history:
+
+```bash
+RETROACHIEVEMENTS_USER='username' \
+RETROACHIEVEMENTS_API_KEY='personal-web-api-key' \
+mscraper myroms --source retroachievements
+```
+
+RetroAchievements metadata and image downloads honor Mini Scraper's batching, automatic retries and HTTP 429 feedback. Both metadata and image files use the persistent local cache. See the [official API quick start](https://api-docs.retroachievements.org/getting-started.html) for account-key details.
 
 ## Download cache and batching
 

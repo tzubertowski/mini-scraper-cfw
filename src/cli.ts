@@ -12,6 +12,12 @@ import { getOutputFormat, supportedFormats } from './format/format.js';
 import { scanLibrary, scrapeLibrary } from './core/index.js';
 import { DEFAULT_BATCH_DELAY_MS, DEFAULT_BATCH_RETRIES, DEFAULT_BATCH_SIZE } from './cache.js';
 
+type CliOptions = Options & {
+  source?: string;
+  retroachievementsUser?: string;
+  retroachievementsKey?: string;
+};
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export async function run(args: string[] = process.argv) {
@@ -47,12 +53,15 @@ export async function run(args: string[] = process.argv) {
     .option('--batch-delay-ms <ms>', 'Delay between batches and retries', Number.parseInt, DEFAULT_BATCH_DELAY_MS)
     .option('--batch-retries <count>', 'Retries for failed downloads', Number.parseInt, DEFAULT_BATCH_RETRIES)
     .option('--media-path <path>', 'ES-DE downloaded_media directory')
+    .option('--source <source>', 'Artwork source (automatic or retroachievements)', 'automatic')
+    .option('--retroachievements-user <name>', 'RetroAchievements username (or set RETROACHIEVEMENTS_USER)')
+    .option('--retroachievements-key <key>', 'RetroAchievements Web API key (or set RETROACHIEVEMENTS_API_KEY)')
     .option('--cleanup', 'Removes all scraped images in target folder')
     .option('--verbose', 'Show detailed logs')
     .version(packageJson.version, '-v, --version', 'Show current version')
     .helpCommand(false)
     .allowExcessArguments(false)
-    .action(async (targetPath: string, options: Options) => {
+    .action(async (targetPath: string, options: CliOptions) => {
       const library = await scanLibrary(targetPath);
       if (library.systems.length === 0) {
         console.info('No ROM folders found');
@@ -87,6 +96,22 @@ export async function run(args: string[] = process.argv) {
         }
 
         options.aiClient = client;
+      }
+
+      if (options.source !== 'automatic' && options.source !== 'retroachievements') {
+        throw new Error('Artwork source must be automatic or retroachievements.');
+      }
+
+      options.artworkSource = options.source;
+      if (options.artworkSource === 'retroachievements') {
+        const username = options.retroachievementsUser ?? process.env.RETROACHIEVEMENTS_USER;
+        const webApiKey = options.retroachievementsKey ?? process.env.RETROACHIEVEMENTS_API_KEY;
+        if (!username || !webApiKey) throw new Error('Set the RetroAchievements username and Web API key.');
+        options.retroAchievementsCredentials = {
+          username,
+          webApiKey,
+          baseUrl: process.env.MSCRAPER_RETROACHIEVEMENTS_URL
+        };
       }
 
       const result = await scrapeLibrary(library, options);

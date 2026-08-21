@@ -54,6 +54,8 @@ npm run desktop:make
 
 Electron Forge writes packaged output to `out/`. Use Node.js 22 or 24 LTS for packaging; the currently pinned Forge toolchain does not complete archive extraction under Node.js 26.
 
+The release workflow builds ZIP archives for Linux, Windows, and macOS on GitHub's current hosted-runner architecture and attaches them to each new GitHub release. Run the workflow manually with an existing tag to rebuild or replace that release's desktop archives.
+
 ### Command-line app
 
 Install the CLI globally by opening a terminal and running the following command:

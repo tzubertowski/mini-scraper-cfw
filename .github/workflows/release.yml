@@ -1,6 +1,11 @@
 name: release
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to rebuild desktop assets for (for example, v2.1.0)
+        required: false
+        type: string
   repository_dispatch:
     types: [release]
 
@@ -18,9 +23,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    outputs:
+      tag: ${{ steps.release_tag.outputs.tag }}
     steps:
     - uses: actions/checkout@v7
       with:
+        ref: ${{ inputs.tag || github.ref }}
         persist-credentials: false
     - uses: actions/setup-node@v7
       with:
@@ -29,9 +37,95 @@ jobs:
     - run: npm install -g npm@latest && npm ci
     - run: npm run test
     - run: npm run build
+    - name: Record current release
+      id: previous_release
+      if: inputs.tag == ''
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .id 2>/dev/null || true)"
+        echo "id=$release_id" >> "$GITHUB_OUTPUT"
     - run: npx semantic-release
-      if: success()
+      if: success() && inputs.tag == ''
       env:
         GITHUB_TOKEN: ${{ github.token }}
         GIT_COMMITTER_NAME: sinedied
         GIT_COMMITTER_EMAIL: noda@free.fr
+    - name: Resolve release tag
+      id: release_tag
+      env:
+        BEFORE_RELEASE_ID: ${{ steps.previous_release.outputs.id }}
+        GH_TOKEN: ${{ github.token }}
+        MANUAL_TAG: ${{ inputs.tag }}
+      shell: bash
+      run: |
+        if [[ -n "$MANUAL_TAG" ]]; then
+          gh release view "$MANUAL_TAG" >/dev/null
+          echo "tag=$MANUAL_TAG" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .id)"
+        if [[ "$release_id" != "$BEFORE_RELEASE_ID" ]]; then
+          tag="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+        else
+          echo "No new release was created; desktop packaging will be skipped."
+        fi
+
+  desktop:
+    name: Desktop / ${{ matrix.platform }}
+    needs: release
+    if: needs.release.outputs.tag != ''
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux
+          - runner: windows-latest
+            platform: windows
+          - runner: macos-latest
+            platform: macos
+    runs-on: ${{ matrix.runner }}
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ needs.release.outputs.tag }}
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        cache: npm
+    - name: Install ZIP tool
+      if: runner.os == 'Linux'
+      run: sudo apt-get update && sudo apt-get install --yes zip
+    - run: npm ci
+    - name: Set desktop app version from release tag
+      env:
+        RELEASE_TAG: ${{ needs.release.outputs.tag }}
+      shell: bash
+      run: npm version "${RELEASE_TAG#v}" --no-git-tag-version --allow-same-version
+    - name: Package desktop app
+      run: npm run desktop:make
+    - name: Prepare release asset
+      id: asset
+      env:
+        RELEASE_TAG: ${{ needs.release.outputs.tag }}
+        RELEASE_PLATFORM: ${{ matrix.platform }}
+        RELEASE_ARCH: ${{ runner.arch }}
+      shell: bash
+      run: |
+        artifact="$(find out/make/zip -type f -name '*.zip' -print -quit)"
+        if [[ -z "$artifact" ]]; then
+          echo "Electron Forge did not produce a ZIP archive." >&2
+          exit 1
+        fi
+
+        asset="Mini-Scraper-${RELEASE_TAG}-${RELEASE_PLATFORM}-${RELEASE_ARCH}.zip"
+        mv "$artifact" "$asset"
+        echo "path=$asset" >> "$GITHUB_OUTPUT"
+    - name: Attach desktop archive to release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RELEASE_TAG: ${{ needs.release.outputs.tag }}
+      run: gh release upload "$RELEASE_TAG" "${{ steps.asset.outputs.path }}" --clobber

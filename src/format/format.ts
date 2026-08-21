@@ -7,6 +7,7 @@ import minui from './minui.js';
 import muos from './muos.js';
 import nextui from './nextui.js';
 import treefrogui from './treefrogui.js';
+import esde from './esde.js';
 
 export enum Format {
   MinUI = 'minui',
@@ -20,6 +21,7 @@ export enum Format {
   AlliumOS = 'alliumos',
   Anbernic = 'anbernic',
   Funkey = 'funkey',
+  EsDe = 'esde',
   Onion = 'onion'
 }
 
@@ -38,7 +40,8 @@ export type OutputPathFunction = (
   filePath: string,
   machine: string,
   type?: ArtType,
-  folderPath?: string
+  folderPath?: string,
+  options?: Options
 ) => Promise<string>;
 export type OutputArtworkFunction = (
   url1: string | undefined,
@@ -74,7 +77,8 @@ const registrations: Record<string, FormatRegistration> = {
   [Format.SpruceOS]: { adapter: anbernic, aliases: ['spruce'] },
   [Format.AlliumOS]: { adapter: anbernic, aliases: ['allium'] },
   [Format.Anbernic]: { adapter: anbernic },
-  [Format.Funkey]: { adapter: funkey }
+  [Format.Funkey]: { adapter: funkey },
+  [Format.EsDe]: { adapter: esde, aliases: ['es-de'] }
 };
 
 const registry = new Map<string, OutputFormat>();

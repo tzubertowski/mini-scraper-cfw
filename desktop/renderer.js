@@ -3,6 +3,7 @@ const elements = {
   path: document.querySelector('#path'),
   library: document.querySelector('#library'),
   settings: document.querySelector('#settings'),
+  advanced: document.querySelector('#advanced'),
   actions: document.querySelector('#actions'),
   detected: document.querySelector('#detected'),
   systemsCount: document.querySelector('#systems-count'),
@@ -10,6 +11,12 @@ const elements = {
   systems: document.querySelector('#systems'),
   format: document.querySelector('#format'),
   type: document.querySelector('#type'),
+  esdeMediaSetting: document.querySelector('#esde-media-setting'),
+  mediaPath: document.querySelector('#media-path'),
+  chooseMedia: document.querySelector('#choose-media'),
+  batchSize: document.querySelector('#batch-size'),
+  batchDelay: document.querySelector('#batch-delay'),
+  batchRetries: document.querySelector('#batch-retries'),
   artworkPreviewPrimary: document.querySelector('#artwork-preview-primary'),
   artworkPreviewPrimaryLabel: document.querySelector('#artwork-preview-primary-label'),
   artworkPreviewSecondaryWrap: document.querySelector('#artwork-preview-secondary-wrap'),
@@ -24,6 +31,7 @@ const elements = {
   progressLabel: document.querySelector('#progress-label'),
   progressValue: document.querySelector('#progress-value'),
   currentGame: document.querySelector('#current-game'),
+  networkStatus: document.querySelector('#network-status'),
   message: document.querySelector('#message')
 };
 
@@ -31,11 +39,18 @@ function show(element, visible = true) {
   element.classList.toggle('hidden', !visible);
 }
 
+let networkStatusTimer;
+
 function setBusy(busy) {
   elements.choose.disabled = busy;
   elements.start.disabled = busy;
   elements.format.disabled = busy;
   elements.type.disabled = busy;
+  elements.mediaPath.disabled = busy;
+  elements.chooseMedia.disabled = busy;
+  elements.batchSize.disabled = busy;
+  elements.batchDelay.disabled = busy;
+  elements.batchRetries.disabled = busy;
   elements.width.disabled = busy;
   elements.force.disabled = busy;
   elements.cancel.disabled = !busy;
@@ -69,12 +84,16 @@ function updateArtworkPreview() {
   }
 }
 
+function updateFormatSettings() {
+  show(elements.esdeMediaSetting, elements.format.value === 'esde');
+}
+
 elements.choose.addEventListener('click', async () => {
   elements.message.textContent = '';
   try {
     const selection = await window.miniScraper.chooseFolder();
     if (!selection) return;
-    const { library, detection } = selection;
+    const { library, detection, suggestedMediaPath } = selection;
     elements.path.textContent = library.selectedPath;
     elements.systemsCount.textContent = String(library.systems.length);
     elements.gamesCount.textContent = String(library.totalGames);
@@ -91,8 +110,11 @@ elements.choose.addEventListener('click', async () => {
       ? `${detected.label} (${Math.round(detection.confidence * 100)}%)`
       : 'Not certain — please choose';
     elements.format.value = detection.format ?? '';
+    elements.mediaPath.value = suggestedMediaPath;
+    updateFormatSettings();
     show(elements.library);
     show(elements.settings);
+    show(elements.advanced);
     show(elements.actions);
     show(elements.progressCard, false);
     elements.message.textContent = library.totalGames
@@ -106,9 +128,15 @@ elements.choose.addEventListener('click', async () => {
 
 elements.format.addEventListener('change', () => {
   elements.start.disabled = !elements.format.value;
+  updateFormatSettings();
 });
 
 elements.type.addEventListener('change', updateArtworkPreview);
+
+elements.chooseMedia.addEventListener('click', async () => {
+  const mediaPath = await window.miniScraper.chooseMediaFolder();
+  if (mediaPath) elements.mediaPath.value = mediaPath;
+});
 
 window.miniScraper.onProgress((progress) => {
   const percentage = progress.total ? Math.min(100, Math.round((progress.completed / progress.total) * 100)) : 0;
@@ -118,6 +146,17 @@ window.miniScraper.onProgress((progress) => {
   elements.currentGame.textContent = `${progress.system} · ${progress.game}`;
 });
 
+window.miniScraper.onNetworkStatus((status) => {
+  clearTimeout(networkStatusTimer);
+  elements.networkStatus.textContent = status.message;
+  elements.networkStatus.classList.toggle('alert-danger', status.phase === 'failed');
+  elements.networkStatus.classList.toggle('alert-warning', status.phase !== 'failed');
+  show(elements.networkStatus);
+  if (status.phase === 'recovered') {
+    networkStatusTimer = setTimeout(() => show(elements.networkStatus, false), 2500);
+  }
+});
+
 elements.start.addEventListener('click', async () => {
   setBusy(true);
   elements.message.textContent = '';
@@ -125,17 +164,26 @@ elements.start.addEventListener('click', async () => {
   elements.progressValue.textContent = '0%';
   elements.progressLabel.textContent = 'Preparing…';
   elements.currentGame.textContent = '';
+  clearTimeout(networkStatusTimer);
+  show(elements.networkStatus, false);
   show(elements.progressCard);
   try {
     const result = await window.miniScraper.start({
       output: elements.format.value,
       type: elements.type.value,
       width: Number(elements.width.value),
-      force: elements.force.checked
+      force: elements.force.checked,
+      mediaPath: elements.mediaPath.value,
+      batchSize: Number(elements.batchSize.value),
+      batchDelayMs: Number(elements.batchDelay.value),
+      batchRetries: Number(elements.batchRetries.value)
     });
+    const failures = result.downloadFailures ? ` ${result.downloadFailures} downloads failed after retries; run again to retry them.` : '';
     elements.message.textContent = result.cancelled
       ? `Cancelled after ${result.games} games.`
-      : `Done — processed ${result.games} games; ${result.skipped} already had artwork.`;
+      : `Done — processed ${result.games} games; ${result.skipped} already had artwork.${failures}`;
+    elements.message.classList.toggle('alert-warning', result.downloadFailures > 0);
+    elements.message.classList.toggle('alert-info', result.downloadFailures === 0);
     if (!result.cancelled) {
       elements.progress.value = 100;
       elements.progressValue.textContent = '100%';

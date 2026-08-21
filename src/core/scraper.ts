@@ -22,18 +22,26 @@ export type ScrapeResult = {
   games: number;
   matches: { perfect: number; partial: number; ai: number; none: number };
   skipped: number;
+  downloadFailures: number;
 };
 
 type ProgressState = { completed: number };
 
-function snapshotResult(library: LibraryScan, startedAt: number, completed: number, cancelled: boolean): ScrapeResult {
+function snapshotResult(
+  library: LibraryScan,
+  options: Options,
+  startedAt: number,
+  completed: number,
+  cancelled: boolean
+): ScrapeResult {
   return {
     cancelled,
     elapsedMs: Date.now() - startedAt,
     systems: library.systems.length,
     games: completed,
     matches: { ...stats.matches },
-    skipped: stats.skipped
+    skipped: stats.skipped,
+    downloadFailures: options.downloadManager?.failedDownloads ?? 0
   };
 }
 
@@ -56,10 +64,10 @@ export async function scrapeLibrary(library: LibraryScan, options: Options, runt
       });
     }
 
-    return snapshotResult(library, startedAt, progress.completed, false);
+    return snapshotResult(library, options, startedAt, progress.completed, false);
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'AbortError') {
-      return snapshotResult(library, startedAt, progress.completed, true);
+      return snapshotResult(library, options, startedAt, progress.completed, true);
     }
 
     throw error;

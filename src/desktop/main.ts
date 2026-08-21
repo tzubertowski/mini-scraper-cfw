@@ -7,9 +7,11 @@ import { type LibraryScan } from '../core/index.js';
 
 const channels = {
   chooseFolder: 'library:choose-folder',
+  chooseMediaFolder: 'library:choose-media-folder',
   scrape: 'scrape:start',
   cancel: 'scrape:cancel',
-  progress: 'scrape:progress'
+  progress: 'scrape:progress',
+  networkStatus: 'scrape:network-status'
 } as const;
 
 let selectedLibrary: LibraryScan | undefined;
@@ -53,6 +55,15 @@ function createWindow() {
   );
 }
 
+function integerSetting(value: unknown, name: string, minimum: number, maximum: number) {
+  const number = Number(value);
+  if (!Number.isSafeInteger(number) || number < minimum || number > maximum) {
+    throw new Error(`${name} must be ${minimum}–${maximum}`);
+  }
+
+  return number;
+}
+
 async function createOptions(input: unknown): Promise<Options> {
   if (!input || typeof input !== 'object') throw new TypeError('Invalid scrape settings');
   const value = input as Record<string, unknown>;
@@ -63,6 +74,12 @@ async function createOptions(input: unknown): Promise<Options> {
   if (typeof value.type !== 'string' || !artworkTypes.has(value.type)) throw new Error('Unsupported artwork type');
   const width = Number(value.width);
   if (!Number.isFinite(width) || width < 50 || width > 2000) throw new Error('Artwork width must be 50–2000');
+  const batchSize = integerSetting(value.batchSize, 'Batch size', 1, 10_000);
+  const batchDelayMs = integerSetting(value.batchDelayMs, 'Batch delay', 0, 60_000);
+  const batchRetries = integerSetting(value.batchRetries, 'Batch retries', 0, 10);
+
+  const mediaPath = typeof value.mediaPath === 'string' && value.mediaPath.trim() ? value.mediaPath.trim() : undefined;
+  if (output === 'esde' && !mediaPath) throw new Error('Choose the ES-DE downloaded_media folder');
 
   return {
     width,
@@ -72,7 +89,11 @@ async function createOptions(input: unknown): Promise<Options> {
     aiModel: 'gemma2:2b',
     aiUrl: 'http://localhost:11434/v1',
     regions: 'World,Europe,USA,Japan',
-    output
+    output,
+    batchSize,
+    batchDelayMs,
+    batchRetries,
+    mediaPath
   };
 }
 
@@ -90,10 +111,20 @@ function registerHandlers() {
     });
     if (result.canceled || !result.filePaths[0]) return undefined;
     const { detectFormat, scanLibrary } = await import('../core/index.js');
+    const { inferEsdeMediaPath } = await import('../format/esde.js');
     const library = await scanLibrary(result.filePaths[0]);
     const detection = await detectFormat(library);
     selectedLibrary = library;
-    return { library, detection };
+    return { library, detection, suggestedMediaPath: inferEsdeMediaPath(library.romRootPath) };
+  });
+
+  ipcMain.handle(channels.chooseMediaFolder, async (event) => {
+    assertTrustedSender(event);
+    const result = await dialog.showOpenDialog({
+      title: 'Choose the ES-DE downloaded_media folder',
+      properties: ['openDirectory', 'createDirectory']
+    });
+    return result.canceled ? undefined : result.filePaths[0];
   });
 
   ipcMain.handle(channels.scrape, async (event, input: unknown) => {
@@ -101,6 +132,10 @@ function registerHandlers() {
     if (!selectedLibrary) throw new Error('Choose an SD card or ROM folder first');
     if (scrapeController) throw new Error('A scrape is already running');
     const options = await createOptions(input);
+    options.onDownloadStatus = (status) => {
+      if (!event.sender.isDestroyed()) event.sender.send(channels.networkStatus, status);
+    };
+
     const { scrapeLibrary } = await import('../core/index.js');
     scrapeController = new AbortController();
     try {

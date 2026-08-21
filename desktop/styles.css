@@ -202,6 +202,30 @@ header h1 { margin: 4px 0 6px; color: #fff; font-size: 36px; font-weight: 400; }
 #systems { columns: 2; font-size: 13px; }
 #systems li { padding: 2px 0; }
 
+.advanced-settings {
+  overflow: hidden;
+  background: #fff;
+}
+
+.advanced-settings summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  color: #343a40;
+  cursor: pointer;
+  user-select: none;
+}
+
+.advanced-settings summary::-webkit-details-marker { display: none; }
+.advanced-settings summary::after { content: "▾"; color: var(--vita-blue); font-size: 14px; transition: transform .15s ease; }
+.advanced-settings[open] summary::after { transform: rotate(180deg); }
+.advanced-settings summary span { font-size: 1rem; font-weight: 600; }
+.advanced-settings summary small { color: #6c757d; font-size: 11px; font-weight: 400; }
+.advanced-settings[open] summary { border-bottom: 1px solid #d7e2e8; }
+.advanced-settings-body { padding: 0 16px 16px; background: #f8fbfd; }
+
 .actions { margin: 18px 20px; }
 .actions button:first-child { min-width: 140px; }
 .progress-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -226,5 +250,6 @@ progress::-moz-progress-bar { background: var(--bs-primary); }
   .picker .card-body { align-items: stretch !important; flex-direction: column; }
   .artwork-preview { align-items: stretch; flex-direction: column; }
   .preview-images { min-width: 0; }
+  .advanced-settings summary { align-items: flex-start; flex-direction: column; gap: 2px; }
   #systems { columns: 1; }
 }

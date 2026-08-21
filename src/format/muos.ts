@@ -112,18 +112,30 @@ export async function exportArtwork(
     if (!art1Url) return false;
 
     debug(`Found art URL: "${art1Url}"`);
-    return resizeImageTo(art1Url, artPath, { width: options.width, height: options.height });
+    return resizeImageTo(art1Url, artPath, {
+      width: options.width,
+      height: options.height,
+      downloadManager: options.downloadManager
+    });
   }
 
   const artTypes = getArtTypes(options);
   if (artTypes.art2 && (art1Url ?? art2Url)) {
     debug(`Found art URL(s): "${art1Url}" / "${art2Url}"`);
-    return composeImageTo(art1Url, art2Url, artPath, { width: options.width, height: options.height });
+    return composeImageTo(art1Url, art2Url, artPath, {
+      width: options.width,
+      height: options.height,
+      downloadManager: options.downloadManager
+    });
   }
 
   if (art1Url) {
     debug(`Found art URL: "${art1Url}"`);
-    return resizeImageTo(art1Url, artPath, { width: options.width, height: options.height });
+    return resizeImageTo(art1Url, artPath, {
+      width: options.width,
+      height: options.height,
+      downloadManager: options.downloadManager
+    });
   }
 
   return false;

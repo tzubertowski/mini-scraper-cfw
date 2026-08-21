@@ -21,6 +21,16 @@ type DetectionProfile = { format: string; label: string; signatures: Signature[]
 
 const profiles: DetectionProfile[] = [
   {
+    format: 'esde',
+    label: 'ES-DE',
+    signatures: [
+      { path: 'ES-DE/settings/es_settings.xml', weight: 65 },
+      { path: 'ES-DE/downloaded_media', weight: 30 },
+      { path: 'ES-DE/gamelists', weight: 20 },
+      { path: 'ES-DE', weight: 15 }
+    ]
+  },
+  {
     format: 'muos',
     label: 'muOS',
     signatures: [
@@ -130,7 +140,9 @@ async function inventory(rootPath: string, depth = 3) {
 }
 
 export async function detectFormat(library: LibraryScan): Promise<FormatDetection> {
-  const files = await inventory(library.selectedPath);
+  const inventoryRoots = new Set([library.selectedPath, path.dirname(library.romRootPath)]);
+  const inventories = await Promise.all([...inventoryRoots].map(async (rootPath) => inventory(rootPath)));
+  const files = new Set(inventories.flatMap((entries) => [...entries]));
   const candidates = profiles
     .map((profile) => {
       const evidence = profile.signatures

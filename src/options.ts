@@ -1,4 +1,5 @@
 import type OpenAI from 'openai';
+import type { DownloadManager, DownloadStatus } from './cache.js';
 
 export enum ArtTypeOption {
   Boxart = 'boxart',
@@ -21,4 +22,12 @@ export type Options = {
   regions: string;
   output: string;
   cleanup?: boolean;
+  cachePath?: string;
+  batchSize?: number;
+  batchDelayMs?: number;
+  batchRetries?: number;
+  mediaPath?: string;
+  downloadManager?: DownloadManager;
+  onDownloadStatus?: (status: DownloadStatus) => void;
+  downloadSignal?: AbortSignal;
 };

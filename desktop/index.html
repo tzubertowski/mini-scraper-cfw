@@ -26,7 +26,7 @@
             <div class="compat-item"><img src="./assets/frontends/spruce.png" alt="" /><span>SpruceOS</span></div>
             <div class="compat-item wide"><img src="./assets/frontends/treefrogui.png" alt="" /><span>TreeFrogUI</span></div>
           </div>
-          <p>MinUI · GarlicOS · AlliumOS · and more</p>
+          <p>MinUI · GarlicOS · AlliumOS · ES-DE · and more</p>
         </div>
       </header>
 
@@ -98,6 +98,7 @@
               <option value="alliumos">AlliumOS</option>
               <option value="anbernic">Anbernic</option>
               <option value="funkey">FunKey</option>
+              <option value="esde">ES-DE</option>
               </select>
             </label>
             <label class="col-md-4 form-label">
@@ -115,11 +116,42 @@
               <input id="width" class="form-control mt-1" type="number" min="50" max="2000" value="300" />
             </label>
           </div>
+          <div id="esde-media-setting" class="mt-3 hidden">
+            <label class="form-label" for="media-path">ES-DE downloaded_media folder</label>
+            <div class="input-group">
+              <input id="media-path" class="form-control font-monospace" type="text" />
+              <button id="choose-media" class="btn btn-outline-secondary" type="button">Browse</button>
+            </div>
+            <div class="form-text">ES-DE matches media by ROM filename; Mini Scraper will not modify gamelist.xml.</div>
+          </div>
           <div class="form-check mt-3">
             <input id="force" class="form-check-input" type="checkbox" />
             <label class="form-check-label" for="force">Replace existing artwork</label>
           </div>
         </div>
+      </section>
+
+      <section id="advanced" class="card shadow-sm hidden">
+        <details class="advanced-settings">
+          <summary><span>3. Advanced settings</span><small>Batching, delays &amp; automatic retries</small></summary>
+          <div class="advanced-settings-body">
+            <div class="row g-3 mt-0">
+              <label class="col-md-4 form-label">
+                Batch size
+                <input id="batch-size" class="form-control mt-1" type="number" min="1" max="10000" value="100" />
+              </label>
+              <label class="col-md-4 form-label">
+                Delay (ms)
+                <input id="batch-delay" class="form-control mt-1" type="number" min="0" max="60000" value="1000" />
+              </label>
+              <label class="col-md-4 form-label">
+                Automatic retries
+                <input id="batch-retries" class="form-control mt-1" type="number" min="0" max="10" value="2" />
+              </label>
+            </div>
+            <div class="form-text">Downloads are cached locally. Mini Scraper pauses after each batch and retries failed requests automatically. Set retries to 0 to disable.</div>
+          </div>
+        </details>
       </section>
 
       <section id="actions" class="actions d-flex gap-2 hidden">
@@ -132,6 +164,7 @@
           <div class="progress-heading"><strong id="progress-label">Preparing…</strong><span id="progress-value" class="badge text-bg-primary">0%</span></div>
           <progress id="progress" class="w-100" max="100" value="0"></progress>
           <p id="current-game" class="small text-secondary"></p>
+          <div id="network-status" class="network-status alert alert-warning py-2 px-3 mt-2 mb-0 hidden" role="status"></div>
         </div>
       </section>
 

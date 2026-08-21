@@ -9,6 +9,7 @@ import { machines } from './machines.js';
 import { getOutputFormat, type OutputFormat } from './format/format.js';
 import { ArtType } from './art.js';
 import { pathExists, sanitizeName, stripMetadata } from './file.js';
+import { DownloadManager } from './cache.js';
 
 const debug = createDebug('libretro');
 
@@ -75,6 +76,8 @@ export async function listScrapeFiles(folderPath: string, machine: string) {
 }
 
 export async function scrapeFolder(folderPath: string, options: Options, runtime: ScrapeFolderRuntime = {}) {
+  options.downloadSignal = runtime.signal;
+  options.downloadManager ??= new DownloadManager(options);
   debug('Options:', options);
   const folderMachine = getMachine(path.basename(folderPath), true);
   console.info(`Scraping folder: ${folderPath} [Detected: ${folderMachine}]`);
@@ -141,7 +144,7 @@ async function scrapeFile(folderPath: string, file: string, machine: string, for
     return;
   }
 
-  const artPath = await format.getArtPath(originalFilePath, machine, undefined, folderPath);
+  const artPath = await format.getArtPath(originalFilePath, machine, undefined, folderPath, options);
   if ((await pathExists(artPath)) && !options.force) {
     debug(`Art file already exists, skipping "${artPath}"`);
     stats.skipped++;
@@ -165,7 +168,7 @@ async function scrapeSeparateArtwork(context: {
   options: Options;
 }) {
   const { folderPath, romPath, searchPath, machine, type, format, options } = context;
-  const artworkPath = await format.getArtPath(romPath, machine, type, folderPath);
+  const artworkPath = await format.getArtPath(romPath, machine, type, folderPath, options);
   if ((await pathExists(artworkPath)) && !options.force) {
     debug(`Art file already exists, skipping "${artworkPath}"`);
     stats.skipped++;

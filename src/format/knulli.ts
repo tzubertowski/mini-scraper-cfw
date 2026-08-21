@@ -151,7 +151,11 @@ const knulli: OutputFormat = {
   async exportArtwork(art1Url, _art2Url, artPath, options) {
     if (!art1Url) return false;
     debug(`Found art URL: "${art1Url}"`);
-    return resizeImageTo(art1Url, artPath, { width: options.width, height: options.height });
+    return resizeImageTo(art1Url, artPath, {
+      width: options.width,
+      height: options.height,
+      downloadManager: options.downloadManager
+    });
   },
 
   async registerArtwork(context: ArtworkContext) {

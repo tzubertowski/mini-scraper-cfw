@@ -10,6 +10,7 @@ import { checkAi, DEFAULT_AI_URL, DEFAULT_AI_KEY } from './ai.js';
 import { resetStats } from './stats.js';
 import { getOutputFormat, supportedFormats } from './format/format.js';
 import { scanLibrary, scrapeLibrary } from './core/index.js';
+import { DEFAULT_BATCH_DELAY_MS, DEFAULT_BATCH_RETRIES, DEFAULT_BATCH_SIZE } from './cache.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -41,6 +42,11 @@ export async function run(args: string[] = process.argv) {
     .option('--ai-key <key>', 'API key for the AI provider (or set OPENAI_API_KEY)')
     .option('-r, --regions <regions>', 'Preferred regions to use for AI matching', 'World,Europe,USA,Japan')
     .option('-f, --force', 'Force scraping over existing images')
+    .option('--cache-path <path>', 'Persistent artwork download cache directory')
+    .option('--batch-size <count>', 'Network requests per batch', Number.parseInt, DEFAULT_BATCH_SIZE)
+    .option('--batch-delay-ms <ms>', 'Delay between batches and retries', Number.parseInt, DEFAULT_BATCH_DELAY_MS)
+    .option('--batch-retries <count>', 'Retries for failed downloads', Number.parseInt, DEFAULT_BATCH_RETRIES)
+    .option('--media-path <path>', 'ES-DE downloaded_media directory')
     .option('--cleanup', 'Removes all scraped images in target folder')
     .option('--verbose', 'Show detailed logs')
     .version(packageJson.version, '-v, --version', 'Show current version')
@@ -94,6 +100,7 @@ export async function run(args: string[] = process.argv) {
       if (options.ai) console.info(`- ${result.matches.ai} AI matches`);
       console.info(`- ${result.matches.none} not found`);
       if (result.skipped) console.info(`- ${result.skipped} existing`);
+      if (result.downloadFailures) console.info(`- ${result.downloadFailures} downloads failed after retries`);
     });
 
   await command.parseAsync(args);

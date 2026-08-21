@@ -123,4 +123,26 @@ describe('regular scrape smoke test', () => {
     expect(stats.matches.perfect).toBe(1);
     await expect(fs.readFile(artPath)).resolves.not.toEqual(Buffer.from('existing'));
   });
+
+  test('writes ES-DE media without creating gamelist metadata', async () => {
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const service = await startMockServices({ artworkNames: ['Wario Land 3 (World) (En,Ja).png'] });
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'mini-scraper-esde-smoke-'));
+    cleanups.push(service.close, async () => fs.rm(directory, { recursive: true }));
+    const folderPath = path.join(directory, 'ROMs', 'GBC');
+    await fs.mkdir(folderPath, { recursive: true });
+    await fs.copyFile(
+      path.join(repositoryRoot, 'test', 'GBC', 'Wario Land 3 (World) (En,Ja).zip'),
+      path.join(folderPath, 'Wario Land 3 (World) (En,Ja).zip')
+    );
+    const mediaPath = path.join(directory, 'ES-DE', 'downloaded_media');
+    process.env.MSCRAPER_THUMBNAIL_URL = `${service.baseUrl}/`;
+
+    await scrapeFolder(folderPath, createOptions({ output: 'esde', mediaPath }));
+
+    await expect(
+      fs.access(path.join(mediaPath, 'gbc', 'covers', 'Wario Land 3 (World) (En,Ja).png'))
+    ).resolves.toBeUndefined();
+    await expect(fs.access(path.join(folderPath, 'gamelist.xml'))).rejects.toThrow();
+  });
 });

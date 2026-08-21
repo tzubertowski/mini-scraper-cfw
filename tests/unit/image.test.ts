@@ -4,6 +4,7 @@ import path from 'node:path';
 import { Jimp } from 'jimp';
 import { afterEach, describe, expect, test } from 'vitest';
 import { composeImageTo, loadImage, resizeImageTo } from '../../src/image.js';
+import { DownloadManager } from '../../src/cache.js';
 import { startMockServices } from '../helpers/mock-services.js';
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -30,11 +31,13 @@ describe('image processing', () => {
     const resizedPath = path.join(directory, 'resized.png');
     const composedPath = path.join(directory, 'composed.png');
     const imageUrl = `${service.baseUrl}/art.png`;
+    const downloadManager = new DownloadManager({ cachePath: path.join(directory, 'cache'), batchDelayMs: 0 });
 
-    await resizeImageTo(imageUrl, resizedPath, { width: 8 });
+    await resizeImageTo(imageUrl, resizedPath, { width: 8, downloadManager });
     await composeImageTo(imageUrl, imageUrl, composedPath, {
       width: 12,
-      height: 12
+      height: 12,
+      downloadManager
     });
 
     await expect(Jimp.read(resizedPath)).resolves.toMatchObject({
@@ -43,5 +46,6 @@ describe('image processing', () => {
     await expect(Jimp.read(composedPath)).resolves.toMatchObject({
       bitmap: expect.objectContaining({ width: 12, height: 12 })
     });
+    expect(service.requests.filter((request) => request.path === '/art.png')).toHaveLength(1);
   });
 });

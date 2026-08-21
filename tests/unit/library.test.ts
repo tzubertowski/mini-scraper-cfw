@@ -88,6 +88,18 @@ describe('reusable scraper core', () => {
     expect(ambiguous.candidates[0]?.score).toBe(15);
   });
 
+  test('detects ES-DE beside a selected ROM directory', async () => {
+    const root = await createRoot('esde');
+    await fs.mkdir(path.join(root, 'ROMs', 'gba'), { recursive: true });
+    await fs.writeFile(path.join(root, 'ROMs', 'gba', 'Apotris.gba'), 'rom');
+    await fs.mkdir(path.join(root, 'ES-DE', 'settings'), { recursive: true });
+    await fs.writeFile(path.join(root, 'ES-DE', 'settings', 'es_settings.xml'), '<settings/>');
+    await fs.mkdir(path.join(root, 'ES-DE', 'downloaded_media'), { recursive: true });
+    const library = await scanLibrary(path.join(root, 'ROMs'));
+
+    await expect(detectFormat(library)).resolves.toMatchObject({ format: 'esde', confidence: 1 });
+  });
+
   test('returns a structured cancelled result', async () => {
     const root = await createRoot('cancel');
     await fs.mkdir(path.join(root, 'Roms', 'GBC'), { recursive: true });

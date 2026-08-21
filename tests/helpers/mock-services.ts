@@ -14,10 +14,16 @@ type Completion = string | Record<string, unknown>;
 
 export async function startMockServices({
   artworkNames = ['Wario Land 3 (World) (En,Ja).png'],
-  completionResponses = [{ bestMatch: artworkNames[0] }]
+  completionResponses = [{ bestMatch: artworkNames[0] }],
+  transientFailures = {},
+  transientFailureStatus = 503,
+  retryAfter
 }: {
   artworkNames?: string[];
   completionResponses?: Completion[];
+  transientFailures?: Record<string, number>;
+  transientFailureStatus?: number;
+  retryAfter?: string;
 } = {}) {
   const requests: RecordedRequest[] = [];
   const png = encode({
@@ -28,6 +34,7 @@ export async function startMockServices({
     data: new Uint8Array([255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255])
   });
   let completionIndex = 0;
+  const remainingFailures = new Map(Object.entries(transientFailures));
 
   const server = createServer((request, response) => {
     void handleRequest(request, response).catch((error: unknown) => {
@@ -46,6 +53,15 @@ export async function startMockServices({
       authorization: request.headers.authorization,
       body
     });
+
+    const failuresLeft = remainingFailures.get(path) ?? 0;
+    if (failuresLeft > 0) {
+      remainingFailures.set(path, failuresLeft - 1);
+      response.statusCode = transientFailureStatus;
+      if (retryAfter) response.setHeader('retry-after', retryAfter);
+      response.end('Try again');
+      return;
+    }
 
     if (path === '/v1/models') {
       sendJson(response, {

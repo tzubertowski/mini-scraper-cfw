@@ -11,6 +11,7 @@ import minui from '../../src/format/minui.js';
 import muos from '../../src/format/muos.js';
 import nextui from '../../src/format/nextui.js';
 import treefrogui from '../../src/format/treefrogui.js';
+import esde, { inferEsdeMediaPath } from '../../src/format/esde.js';
 import { createOptions } from '../helpers/options.js';
 
 const temporaryPaths: string[] = [];
@@ -49,11 +50,13 @@ describe('output formats', () => {
     const garlicOs = await getOutputFormat(createOptions({ output: 'garlicos' }));
     const spruceOs = await getOutputFormat(createOptions({ output: 'spruceos' }));
     const alliumOs = await getOutputFormat(createOptions({ output: 'allium' }));
+    const esDe = await getOutputFormat(createOptions({ output: 'es-de' }));
     expect(onion).toBe(anbernic);
     expect(onionOs).toBe(anbernic);
     expect(garlicOs).toBe(anbernic);
     expect(spruceOs).toBe(anbernic);
     expect(alliumOs).toBe(anbernic);
+    expect(esDe).toBe(esde);
     expect(supportedFormats).toEqual(
       expect.arrayContaining([
         'minui',
@@ -64,9 +67,28 @@ describe('output formats', () => {
         'onionos',
         'garlicos',
         'spruceos',
-        'alliumos'
+        'alliumos',
+        'esde'
       ])
     );
+  });
+
+  test('writes ES-DE media by canonical system name and preserves ROM subdirectories', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mini-scraper-esde-'));
+    temporaryPaths.push(root);
+    const romRoot = path.join(root, 'ROMs');
+    const folderPath = path.join(romRoot, 'GBA');
+    const romPath = path.join(folderPath, 'Hacks', 'Pokemon Unbound.gba');
+    const mediaPath = path.join(root, 'ES-DE', 'downloaded_media');
+    const options = createOptions({ output: 'esde', mediaPath });
+
+    await expect(
+      esde.getArtPath(romPath, 'Nintendo - Game Boy Advance', ArtType.Boxart, folderPath, options)
+    ).resolves.toBe(path.join(mediaPath, 'gba', 'covers', 'Hacks', 'Pokemon Unbound.png'));
+    await expect(
+      esde.getArtPath(romPath, 'Nintendo - Game Boy Advance', ArtType.Snap, folderPath, options)
+    ).resolves.toBe(path.join(mediaPath, 'gba', 'screenshots', 'Hacks', 'Pokemon Unbound.png'));
+    expect(inferEsdeMediaPath(romRoot)).toBe(mediaPath);
   });
 
   test('writes Knulli media paths and preserves existing gamelist metadata', async () => {

@@ -9,7 +9,7 @@
 
 <img src="https://raw.githubusercontent.com/sinedied/mini-scraper/refs/heads/main/pic.jpg" alt="picture of a scraped boxart" width="180" align="right">
 
-Artwork scraper for MinUI, NextUI, muOS, Knulli, TreeFrogUI, OnionOS, GarlicOS, SpruceOS, AlliumOS, and other handheld frontends.
+Artwork scraper for MinUI, NextUI, muOS, Knulli, ES-DE, TreeFrogUI, OnionOS, GarlicOS, SpruceOS, AlliumOS, and other handheld frontends.
 
 > [!NOTE]
 > MinUI does't officially support boxarts, but still has [some support for it as stated by its author](https://www.reddit.com/r/SBCGaming/comments/1hycyqx/minui_box_art/).
@@ -18,12 +18,13 @@ Artwork scraper for MinUI, NextUI, muOS, Knulli, TreeFrogUI, OnionOS, GarlicOS, 
 - Scrapes boxart for your ROMs, in a compatible format with multiple frontends/OSes
 - Includes an Electron desktop app with folder selection, automatic frontend detection, progress, and cancellation
 - No account needed, uses [libretro thumbnails](https://github.com/libretro-thumbnails/libretro-thumbnails)
+- Keeps a persistent local source-image cache and spaces network traffic into retryable batches
 - Optionally uses local AI (via [Ollama](https://ollama.com/) or any OpenAI-compatible API) for better boxart matching
 - No configuration needed
 
 ## What this fork adds
 
-- New output adapters for **Knulli**, **TreeFrogUI**, **GarlicOS**, **SpruceOS**, and **AlliumOS**, plus an explicit **OnionOS** format.
+- New output adapters for **Knulli**, **ES-DE**, **TreeFrogUI**, **GarlicOS**, **SpruceOS**, and **AlliumOS**, plus an explicit **OnionOS** format.
 - Knulli scraped-media support, including boxart, screenshot and titleshot filenames and updates to EmulationStation's `gamelist.xml`.
 - A guided desktop interface built with **Electron** and Bootstrap. Choose a card or ROM folder, confirm the detected frontend, preview the artwork style and start scraping.
 - Automatic detection for supported SD-card layouts and a reusable scraper core shared by the CLI and desktop app.
@@ -50,6 +51,8 @@ The desktop app is built with Electron and is the easiest way to use Mini Scrape
 1. Open Mini Scraper and choose the SD card or ROM folder.
 2. Confirm the detected frontend and preview the artwork style.
 3. Select **Add artwork**.
+
+For ES-DE, Mini Scraper detects or suggests the sibling `ES-DE/downloaded_media` directory. You can choose a custom Game media directory before scraping. ES-DE media is matched by ROM filename, so Mini Scraper does not create or update `gamelist.xml` for this format.
 
 The detector uses scored filesystem evidence and asks for manual confirmation when it cannot distinguish similar layouts. All filesystem and network work stays in the Electron main process; the local web interface receives only folder-selection, scrape, cancel, and progress operations through an isolated bridge.
 
@@ -126,6 +129,11 @@ When running the scraper, you can pass the following options:
 - `--ai-key <key>`: API key for the AI provider, or set the `OPENAI_API_KEY` environment variable
 - `-r, --regions <regions>`: Preferred regions to use for AI matching (default: `World,Europe,USA,Japan`)
 - `-f, --force`: Force scraping over existing images
+- `--cache-path <path>`: Persistent source-image cache directory
+- `--batch-size <count>`: Network requests per batch (default: `100`)
+- `--batch-delay-ms <ms>`: Pause between batches and failed-request retries (default: `1000`)
+- `--batch-retries <count>`: Retry count for failed downloads (default: `2`)
+- `--media-path <path>`: ES-DE `downloaded_media` directory; otherwise inferred beside the ROM root
 - `--cleanup`: Removes all scraped images in target folder
 - `--verbose`: Show detailed logs
 - `-v, --version`: Show current version
@@ -146,8 +154,23 @@ When running the scraper, you can pass the following options:
 | `garlicos` | `Imgs/<ROM stem>.png` | `garlic` is an alias |
 | `spruceos` | `Imgs/<ROM stem>.png` | `spruce` is an alias |
 | `alliumos` | `Imgs/<ROM stem>.png` | `allium` is an alias |
+| `esde` | `downloaded_media/<system>/<media type>/<ROM stem>.png` | Uses `covers`, `screenshots`, and `titlescreens`; `es-de` is an alias |
 | `anbernic` | `Imgs/<ROM stem>.png` | Existing stock-style layout |
 | `funkey` | `<ROM stem>.png` | Artwork beside the ROM |
+
+## Download cache and batching
+
+Mini Scraper stores downloaded source artwork in a persistent content cache before resizing or composing it. Re-running a scrape, changing the output frontend, or replacing generated artwork reuses the cached source rather than downloading it again.
+
+The default cache locations are:
+
+- Linux: `$XDG_CACHE_HOME/mini-scraper` or `~/.cache/mini-scraper`
+- macOS: `~/Library/Caches/mini-scraper`
+- Windows: `%LOCALAPPDATA%\Mini Scraper\Cache`
+
+Set `MSCRAPER_CACHE_DIR` or use `--cache-path` to override it. Cache entries are keyed by their complete source URL. Downloads remain sequential, pause for one second after every 100 network requests by default, and retry a failed request twice before continuing to the next game. Cache hits do not count against the batch size.
+
+The desktop app reports batch pauses, automatic retries and server throttling (HTTP 429) in the progress panel. A server-provided `Retry-After` delay is respected. If all attempts fail, the scrape continues and the completion message reports how many downloads remain; running the scraper again retries those missing files while reusing everything already cached.
 
 ## AI matching
 

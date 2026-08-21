@@ -134,4 +134,5 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         RELEASE_TAG: ${{ needs.release.outputs.tag }}
+      shell: bash
       run: gh release upload "$RELEASE_TAG" "${{ steps.asset.outputs.path }}" --clobber

@@ -57,19 +57,19 @@ export function isRomFolder(folderName: string) {
 
 export async function listScrapeFiles(folderPath: string, machine: string) {
   const extensions = machines[machine]?.extensions ?? [];
-  const files = await glob(
-    extensions.map((extension) => `**/*.${extension}`),
-    {
-      onlyFiles: true,
-      cwd: folderPath,
-      caseSensitiveMatch: false
-    }
-  );
+  const files = await glob('**/*', {
+    onlyFiles: true,
+    cwd: folderPath,
+    caseSensitiveMatch: false,
+    followSymbolicLinks: false
+  });
+  const supportedExtensions = new Set(extensions.map((extension) => extension.toLowerCase()));
   const result: string[] = [];
   for (const file of files) {
+    if (!supportedExtensions.has(path.extname(file).slice(1).toLowerCase())) continue;
     const absolutePath = path.join(folderPath, file);
     const m3uPath = absolutePath.replace(/ \(Disc \d+\).+$/v, '') + '.m3u';
-    if (!absolutePath.endsWith('.m3u') && (await pathExists(m3uPath))) continue;
+    if (path.extname(absolutePath).toLowerCase() !== '.m3u' && (await pathExists(m3uPath))) continue;
     result.push(file);
   }
 

@@ -38,6 +38,17 @@ describe('reusable scraper core', () => {
     ]);
   });
 
+  test('counts uppercase ROM extensions as Windows does', async () => {
+    const root = await createRoot('windows-extensions');
+    await fs.mkdir(path.join(root, 'Roms', 'GBA'), { recursive: true });
+    await fs.writeFile(path.join(root, 'Roms', 'GBA', 'Apotris.GBA'), 'rom');
+
+    const library = await scanLibrary(root);
+
+    expect(library.totalGames).toBe(1);
+    expect(library.systems[0]?.gameCount).toBe(1);
+  });
+
   test('accepts a single system folder without changing the process working directory', async () => {
     const root = await createRoot('single');
     const systemPath = path.join(root, 'GBC');

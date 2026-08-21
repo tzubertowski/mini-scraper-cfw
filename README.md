@@ -1,7 +1,8 @@
 # 🎨 mini-scraper
 
 [![NPM version](https://img.shields.io/npm/v/@sinedied/mini-scraper.svg)](https://www.npmjs.com/package/@sinedied/mini-scraper)
-[![Build Status](https://github.com/sinedied/mini-scraper/workflows/build/badge.svg)](https://github.com/sinedied/mini-scraper/actions)
+[![Build Status](https://github.com/tzubertowski/mini-scraper-cfw/actions/workflows/ci.yml/badge.svg)](https://github.com/tzubertowski/mini-scraper-cfw/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/tzubertowski/mini-scraper-cfw)](https://github.com/tzubertowski/mini-scraper-cfw/releases/latest)
 ![Node version](https://img.shields.io/node/v/@sinedied/mini-scraper.svg)
 [![XO code style](https://img.shields.io/badge/code_style-XO-5ed9c7.svg)](https://github.com/sindresorhus/xo)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -15,25 +16,39 @@ Artwork scraper for MinUI, NextUI, muOS, Knulli, TreeFrogUI, OnionOS, GarlicOS, 
 
 **Features:**
 - Scrapes boxart for your ROMs, in a compatible format with multiple frontends/OSes
-- Includes a desktop app with folder selection, automatic frontend detection, progress, and cancellation
+- Includes an Electron desktop app with folder selection, automatic frontend detection, progress, and cancellation
 - No account needed, uses [libretro thumbnails](https://github.com/libretro-thumbnails/libretro-thumbnails)
 - Optionally uses local AI (via [Ollama](https://ollama.com/) or any OpenAI-compatible API) for better boxart matching
 - No configuration needed
 
-## Installation
+## What this fork adds
 
-Requires [Node.js >22.14](https://nodejs.org/), and optionally [Ollama](https://ollama.com/) (or any other OpenAI-compatible AI provider) for AI matching. If you don't want to install these locally, you can use [Docker](#running-with-docker).
+- New output adapters for **Knulli**, **TreeFrogUI**, **GarlicOS**, **SpruceOS**, and **AlliumOS**, plus an explicit **OnionOS** format.
+- Knulli scraped-media support, including boxart, screenshot and titleshot filenames and updates to EmulationStation's `gamelist.xml`.
+- A guided desktop interface built with **Electron** and Bootstrap. Choose a card or ROM folder, confirm the detected frontend, preview the artwork style and start scraping.
+- Automatic detection for supported SD-card layouts and a reusable scraper core shared by the CLI and desktop app.
+- Ready-to-run desktop ZIP builds for Linux, Windows and macOS attached to GitHub releases.
 
+Existing MinUI, NextUI, muOS, Anbernic and FunKey output formats remain supported.
 
+<img src="./screenshot.png" alt="Mini Scraper Electron desktop app showing a detected muOS library and artwork preview" width="720">
 
-This tool uses a Command Line Interface (CLI) and must be installed and run from a terminal.
+## Download the desktop app
+
+Download the archive for your system from the [latest GitHub release](https://github.com/tzubertowski/mini-scraper-cfw/releases/latest), extract it and run Mini Scraper. The packaged desktop app includes Electron, so Node.js is not required.
+
+Current builds are provided for Linux x64, Windows x64 and macOS ARM64.
+
+## Installation and development
+
+The CLI and development setup require [Node.js >22.14](https://nodejs.org/), and optionally [Ollama](https://ollama.com/) (or any other OpenAI-compatible AI provider) for AI matching. If you don't want to install these locally, you can use the packaged desktop app or [Docker](#running-with-docker).
 
 ### Desktop app
 
-The desktop app is the easiest way to use Mini Scraper:
+The desktop app is built with Electron and is the easiest way to use Mini Scraper:
 
 1. Open Mini Scraper and choose the SD card or ROM folder.
-2. Confirm the detected frontend and artwork style.
+2. Confirm the detected frontend and preview the artwork style.
 3. Select **Add artwork**.
 
 The detector uses scored filesystem evidence and asks for manual confirmation when it cannot distinguish similar layouts. All filesystem and network work stays in the Electron main process; the local web interface receives only folder-selection, scrape, cancel, and progress operations through an isolated bridge.
@@ -55,6 +70,29 @@ npm run desktop:make
 Electron Forge writes packaged output to `out/`. Use Node.js 22 or 24 LTS for packaging; the currently pinned Forge toolchain does not complete archive extraction under Node.js 26.
 
 The GitHub-only release workflow builds ZIP archives for Linux, Windows, and macOS on GitHub's current hosted-runner architecture and attaches them to each new GitHub release. It does not publish this fork under the upstream npm package name. Run the workflow manually with an existing tag to rebuild or replace that release's desktop archives.
+
+#### Rebuilding releases with GitHub Actions
+
+Open **Actions → release → Run workflow** in this repository:
+
+- Leave **tag** empty to let semantic-release create the next version from conventional commits. If there are no releasable commits, packaging is skipped.
+- Enter an existing tag such as `v2.2.0` to rebuild its Linux, Windows and macOS archives. Existing assets with the same names are replaced.
+
+The same operations can be started and monitored with GitHub CLI:
+
+```bash
+# Create the next semantic release and build its desktop archives
+gh workflow run release.yml --ref main
+
+# Rebuild all desktop archives for an existing release
+gh workflow run release.yml --ref main -f tag=v2.2.0
+
+# Find and monitor the run
+gh run list --workflow release.yml --limit 1
+gh run watch <run-id> --exit-status
+```
+
+The workflow runs the test suite first, then packages the tagged source with Electron Forge on each hosted operating system and uploads the resulting ZIP files to the GitHub release.
 
 ### Command-line app
 

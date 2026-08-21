@@ -7,7 +7,7 @@
   "main": "lib/desktop/main.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sinedied/mini-scraper.git"
+    "url": "https://github.com/tzubertowski/mini-scraper-cfw.git"
   },
   "bin": {
     "mscraper": "bin/mscraper.js"
@@ -49,9 +49,9 @@
     "name": "Yohan Lasorsa",
     "url": "https://bsky.app/profile/sinedied.bsky.social"
   },
-  "homepage": "https://github.com/sinedied/mini-scraper",
+  "homepage": "https://github.com/tzubertowski/mini-scraper-cfw",
   "bugs": {
-    "url": "https://github.com/sinedied/mini-scraper/issues"
+    "url": "https://github.com/tzubertowski/mini-scraper-cfw/issues"
   },
   "license": "MIT",
   "engines": {

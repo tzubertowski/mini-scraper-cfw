@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { detectFormat, scanLibrary, scrapeLibrary } from '../../src/core/index.js';
+import { listScrapeFiles } from '../../src/libretro.js';
 import { createOptions } from '../helpers/options.js';
 
 const temporaryPaths: string[] = [];
@@ -50,6 +51,20 @@ describe('reusable scraper core', () => {
 
     expect(library.totalGames).toBe(1);
     expect(library.systems[0]?.gameCount).toBe(1);
+  });
+
+  test('finds ROMs in Windows paths containing glob characters', async () => {
+    const root = await createRoot('windows-special-path');
+    const systemPath = path.join(root, 'SD Card [E] (Games)', 'Roms', 'GBA');
+    await fs.mkdir(path.join(systemPath, 'Hacks [Translated]'), { recursive: true });
+    await fs.writeFile(path.join(systemPath, 'Advance Wars (USA).GBA'), 'rom');
+    await fs.writeFile(path.join(systemPath, 'Hacks [Translated]', 'Pokémon.gba'), 'rom');
+    await fs.writeFile(path.join(systemPath, 'notes.txt'), 'ignore');
+
+    await expect(listScrapeFiles(systemPath, 'Nintendo - Game Boy Advance')).resolves.toEqual([
+      'Advance Wars (USA).GBA',
+      path.join('Hacks [Translated]', 'Pokémon.gba')
+    ]);
   });
 
   test('accepts a single system folder without changing the process working directory', async () => {

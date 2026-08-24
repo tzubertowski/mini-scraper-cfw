@@ -1,7 +1,7 @@
 import process from 'node:process';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import createDebug from 'debug';
-import glob from 'fast-glob';
 import { ArtTypeOption, type Options } from './options.js';
 import { findBestMatch, findFuzzyMatches } from './matcher.js';
 import { stats } from './stats.js';
@@ -55,14 +55,25 @@ export function isRomFolder(folderName: string) {
   return getMachine(folderName, true) !== undefined;
 }
 
+async function listFiles(folderPath: string, relativePath = ''): Promise<string[]> {
+  const entries = await fs.readdir(path.join(folderPath, relativePath), { withFileTypes: true });
+  const files: string[] = [];
+
+  for (const entry of entries) {
+    const entryPath = path.join(relativePath, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await listFiles(folderPath, entryPath)));
+    } else if (entry.isFile()) {
+      files.push(entryPath);
+    }
+  }
+
+  return files;
+}
+
 export async function listScrapeFiles(folderPath: string, machine: string) {
   const extensions = machines[machine]?.extensions ?? [];
-  const files = await glob('**/*', {
-    onlyFiles: true,
-    cwd: folderPath,
-    caseSensitiveMatch: false,
-    followSymbolicLinks: false
-  });
+  const files = await listFiles(folderPath);
   const supportedExtensions = new Set(extensions.map((extension) => extension.toLowerCase()));
   const result: string[] = [];
   for (const file of files) {

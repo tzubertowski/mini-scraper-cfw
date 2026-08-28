@@ -7,10 +7,13 @@ export enum ArtTypeOption {
   Snap = 'snap',
   Title = 'title',
   BoxAndSnap = 'box+snap',
-  BoxAndTitle = 'box+title'
+  BoxAndTitle = 'box+title',
+  SnapAndBox = 'snap+box',
+  TitleAndBox = 'title+box'
 }
 
 export type ArtworkSourceId = 'automatic' | 'retroachievements';
+export type CompositeOrder = 'primary-front' | 'secondary-front';
 
 export type RetroAchievementsCredentials = {
   username: string;
@@ -22,6 +25,7 @@ export type Options = {
   width: number;
   height?: number;
   type: ArtTypeOption;
+  compositeOrder?: CompositeOrder;
   force?: boolean;
   ai?: boolean;
   aiModel: string;

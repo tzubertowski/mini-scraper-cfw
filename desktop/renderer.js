@@ -131,11 +131,21 @@ const artworkPreviews = {
   'box+title': [
     { file: 'wario-land-3-boxart.png', label: 'Box art', alt: 'Wario Land 3 box art' },
     { file: 'wario-land-3-title.png', label: 'Title screen', alt: 'Wario Land 3 title screen' }
+  ],
+  'snap+box': [
+    { file: 'wario-land-3-screenshot.png', label: 'Screenshot', alt: 'Wario Land 3 gameplay screenshot' },
+    { file: 'wario-land-3-boxart.png', label: 'Box art', alt: 'Wario Land 3 box art' }
+  ],
+  'title+box': [
+    { file: 'wario-land-3-title.png', label: 'Title screen', alt: 'Wario Land 3 title screen' },
+    { file: 'wario-land-3-boxart.png', label: 'Box art', alt: 'Wario Land 3 box art' }
   ]
 };
 
 function updateArtworkPreview() {
   const [primary, secondary] = artworkPreviews[elements.type.value] ?? artworkPreviews.boxart;
+  const composite = Boolean(secondary);
+  elements.artworkPreviewPrimary.parentElement?.parentElement?.classList.toggle('is-composite', composite);
   elements.artworkPreviewPrimary.src = `./assets/artwork-preview/${primary.file}`;
   elements.artworkPreviewPrimary.alt = primary.alt;
   elements.artworkPreviewPrimaryLabel.textContent = primary.label;
@@ -282,7 +292,9 @@ elements.format.addEventListener('change', () => {
   refreshControls();
 });
 
-elements.type.addEventListener('change', updateArtworkPreview);
+elements.type.addEventListener('change', () => {
+  updateArtworkPreview();
+});
 
 elements.chooseMedia.addEventListener('click', async () => {
   const mediaPath = await window.miniScraper.chooseMediaFolder();

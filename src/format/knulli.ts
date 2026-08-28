@@ -124,6 +124,14 @@ function selectedTags(options: Options) {
     case ArtTypeOption.BoxAndTitle: {
       return ['boxart', 'titleshot'];
     }
+
+    case ArtTypeOption.SnapAndBox: {
+      return ['image', 'boxart'];
+    }
+
+    case ArtTypeOption.TitleAndBox: {
+      return ['titleshot', 'boxart'];
+    }
   }
 }
 

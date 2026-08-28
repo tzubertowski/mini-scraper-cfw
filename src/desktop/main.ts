@@ -80,7 +80,7 @@ async function createOptions(input: unknown): Promise<Options> {
   const output = typeof value.output === 'string' ? value.output.toLowerCase() : '';
   const { supportedFormats } = await import('../format/format.js');
   if (!supportedFormats.includes(output)) throw new Error(`Unsupported output format: ${output}`);
-  const artworkTypes = new Set(['boxart', 'snap', 'title', 'box+snap', 'box+title']);
+  const artworkTypes = new Set(['boxart', 'snap', 'title', 'box+snap', 'box+title', 'snap+box', 'title+box']);
   if (typeof value.type !== 'string' || !artworkTypes.has(value.type)) throw new Error('Unsupported artwork type');
   const width = Number(value.width);
   if (!Number.isFinite(width) || width < 50 || width > 2000) throw new Error('Artwork width must be 50–2000');

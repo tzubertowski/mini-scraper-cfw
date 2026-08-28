@@ -106,6 +106,14 @@ function selectedTypes(options: Options) {
     case ArtTypeOption.BoxAndTitle: {
       return [ArtType.Boxart, ArtType.Title];
     }
+
+    case ArtTypeOption.SnapAndBox: {
+      return [ArtType.Snap, ArtType.Boxart];
+    }
+
+    case ArtTypeOption.TitleAndBox: {
+      return [ArtType.Title, ArtType.Boxart];
+    }
   }
 }
 

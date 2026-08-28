@@ -342,6 +342,14 @@ export function getArtTypes(options: Options) {
       return { art1: ArtType.Boxart, art2: ArtType.Title };
     }
 
+    case ArtTypeOption.SnapAndBox: {
+      return { art1: ArtType.Snap, art2: ArtType.Boxart };
+    }
+
+    case ArtTypeOption.TitleAndBox: {
+      return { art1: ArtType.Title, art2: ArtType.Boxart };
+    }
+
     // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
     default: {
       console.error(`Invalid art type: "${options.type as any}"`);

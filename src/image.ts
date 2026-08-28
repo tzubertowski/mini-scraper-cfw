@@ -79,21 +79,21 @@ export async function composeImageTo(
     const image2 = url2 ? await loadImage(url2, size?.downloadManager) : undefined;
     const image = new Jimp({ width, height, color: 0x00_00_00_00 });
 
-    if (image2) {
-      const img2Width = image2.bitmap.width >= image2.bitmap.height ? width - margin : undefined;
-      const img2Height = image2.bitmap.width < image2.bitmap.height ? height - margin : undefined;
-      image2.resize({ w: img2Width!, h: img2Height });
-      const image2Center = (height - image2.bitmap.height) / 2;
-      image.composite(image2, 0, image2Center - margin);
+    if (image1) {
+      const backWidth = image1.bitmap.width >= image1.bitmap.height ? width - margin : undefined;
+      const backHeight = image1.bitmap.width < image1.bitmap.height ? height - margin : undefined;
+      image1.resize({ w: backWidth!, h: backHeight });
+      const backCenter = (height - image1.bitmap.height) / 2;
+      image.composite(image1, 0, backCenter - margin);
     }
 
-    if (image1) {
+    if (image2) {
       const halfWidth = width / 2;
       const halfHeight = height / 2;
-      const img1Width = image1.bitmap.width >= image1.bitmap.height ? halfWidth - margin : undefined;
-      const img1Height = image1.bitmap.width < image1.bitmap.height ? halfHeight - margin : undefined;
-      image1.resize({ w: img1Width!, h: img1Height });
-      image.composite(image1, width - image1.bitmap.width, height - image1.bitmap.height);
+      const frontWidth = image2.bitmap.width >= image2.bitmap.height ? halfWidth - margin : undefined;
+      const frontHeight = image2.bitmap.width < image2.bitmap.height ? halfHeight - margin : undefined;
+      image2.resize({ w: frontWidth!, h: frontHeight });
+      image.composite(image2, width - image2.bitmap.width, height - image2.bitmap.height);
     }
 
     await image.write(destination as `${string}.${string}`);
